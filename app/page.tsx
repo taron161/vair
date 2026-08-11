@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import FanGallery from '@/components/FanGallery'
-import Image from 'next/image'
 
 interface Media {
   id: string
@@ -60,6 +59,49 @@ export default function Home() {
     })
   }, [])
 
+  const compressImage = async (file: File, maxWidth: number = 1200): Promise<File> => {
+    return new Promise((resolve) => {
+      const img = new window.Image()
+      img.src = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(img.src)
+
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(file)
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file)
+            return
+          }
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          })
+          resolve(compressedFile)
+        }, 'image/jpeg', 0.8)
+      }
+      img.onerror = () => resolve(file)
+    })
+  }
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || !files.length || !user) return
@@ -68,7 +110,13 @@ export default function Home() {
 
     const formData = new FormData()
     for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i])
+      let file = files[i]
+
+      if (file.type.startsWith('image/') && !file.type.includes('gif')) {
+        file = await compressImage(file)
+      }
+
+      formData.append('files', file)
     }
     formData.append('userId', user.id)
 
@@ -135,13 +183,10 @@ export default function Home() {
         )}
       </div>
 
-      {/* Нижний бар */}
       <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
         <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-2 flex items-center justify-between">
-          {/* Левая кнопка */}
           <div className="w-10 h-10" />
 
-          {/* Центральная кнопка создания поста */}
           <label className="relative w-16 h-16 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
             <input
               type="file"
@@ -151,9 +196,7 @@ export default function Home() {
               className="hidden"
               disabled={uploading}
             />
-            {/* Логотип или иконка */}
             <div className="w-14 h-14 flex items-center justify-center">
-              {/* Замени на <Image> когда будет логотип */}
               <svg viewBox="0 0 60 60" className="w-14 h-14">
                 {[0, 1, 2, 3, 4].map((i) => {
                   const angle = (i - 2) * 14
@@ -173,7 +216,6 @@ export default function Home() {
                 })}
               </svg>
             </div>
-            {/* Плюсик */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <span className="text-white text-xl font-bold leading-none">+</span>
@@ -181,7 +223,6 @@ export default function Home() {
             </div>
           </label>
 
-          {/* Правая кнопка */}
           <div className="w-10 h-10" />
         </div>
       </div>
