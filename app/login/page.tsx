@@ -7,9 +7,17 @@ import { useRouter } from 'next/navigation'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isRegister, setIsRegister] = useState(false)
+  const [isRegister, setIsRegister] = useState(true)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+
+  const toggleMode = () => {
+    setIsRegister(!isRegister)
+    setEmail('')
+    setPassword('')
+    setError('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,14 +69,23 @@ export default function LoginPage() {
             required
           />
 
-          <input
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:border-white/30"
-            required
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Пароль"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 pr-12 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/10 focus:outline-none focus:border-white/30"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 text-sm hover:text-white/80 transition-colors"
+            >
+              {showPassword ? '🙈' : '👁'}
+            </button>
+          </div>
 
           {error && (
             <p className="text-red-400 text-sm text-center">{error}</p>
@@ -82,7 +99,7 @@ export default function LoginPage() {
           </button>
 
           <p
-            onClick={() => setIsRegister(!isRegister)}
+            onClick={toggleMode}
             className="text-white/50 text-sm text-center cursor-pointer hover:text-white/80 transition-colors"
           >
             {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}

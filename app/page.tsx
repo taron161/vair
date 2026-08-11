@@ -1,36 +1,95 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import FanGallery from '@/components/FanGallery'
+import Image from 'next/image'
 
-const demoPhotos = [
-  { id: '1', url: '/photo/photo-1.jpg', caption: 'Золотой закат' },
-  { id: '2', url: '/photo/photo-2.jpg', caption: 'Утренний город' },
-  { id: '3', url: '/photo/photo-3.jpg', caption: 'Лесная тропа' },
-  { id: '4', url: '/photo/photo-4.jpg', caption: 'Морской бриз' },
-  { id: '5', url: '/photo/photo-5.jpg', caption: 'Ночные огни' },
-]
+interface Media {
+  id: string
+  url: string
+  type: string
+  order: number
+}
+
+interface Post {
+  id: string
+  caption: string | null
+  createdAt: string
+  media: Media[]
+}
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
+  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const router = useRouter()
+
+  const loadPosts = useCallback(async (userId: string) => {
+    const { data: postsData } = await supabase
+      .from('Post')
+      .select('*')
+      .eq('userId', userId)
+      .order('createdAt', { ascending: false })
+
+    if (postsData) {
+      const postsWithMedia = await Promise.all(
+        postsData.map(async (post) => {
+          const { data: media } = await supabase
+            .from('Media')
+            .select('*')
+            .eq('postId', post.id)
+            .order('order', { ascending: true })
+          return { ...post, media: media || [] }
+        })
+      )
+      setPosts(postsWithMedia)
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) router.push('/login')
-      else setUser(user)
+      else {
+        setUser(user)
+        loadPosts(user.id)
+      }
       setLoading(false)
     })
   }, [])
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || !files.length || !user) return
+
+    setUploading(true)
+
+    const formData = new FormData()
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i])
+    }
+    formData.append('userId', user.id)
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (res.ok) {
+      await loadPosts(user.id)
+    }
+
+    setUploading(false)
+    e.target.value = ''
+  }
 
   if (loading) return null
 
   return (
     <>
-      <header className="px-4 py-3 border-b border-white/10 flex justify-between items-center">
+      <header className="px-4 py-3 border-b border-white/10 flex justify-between items-center flex-shrink-0">
         <h1 className="text-white text-xl font-bold">VAIR</h1>
         <div className="flex items-center gap-3">
           <span className="text-white/50 text-sm">{user?.email}</span>
@@ -43,13 +102,89 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex-1 flex items-center justify-center">
-        <FanGallery photos={demoPhotos} />
+      <div className="flex-1 overflow-y-auto pb-24">
+        {posts.length === 0 ? (
+          <div className="flex items-center justify-center h-full px-6">
+            <div className="text-center">
+              <p className="text-white text-lg mb-2">У вас пока нет постов</p>
+              <p className="text-white/50 text-sm mb-6">Поделитесь первым снимком!</p>
+              <label className="inline-block px-6 py-3 rounded-xl bg-white text-black font-semibold cursor-pointer hover:bg-white/90 transition-colors">
+                {uploading ? 'Загрузка...' : '📷 Создать пост'}
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={handleUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 pb-4">
+            {posts.map((post) => (
+              <div key={post.id} className="border-b border-white/5 pb-4">
+                {post.caption && (
+                  <p className="text-white/80 text-sm px-4 py-2">{post.caption}</p>
+                )}
+                <FanGallery photos={post.media} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <nav className="px-4 py-3 border-t border-white/10">
-        <p className="text-white/50 text-sm text-center">🏠</p>
-      </nav>
+      {/* Нижний бар */}
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
+        <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-2 flex items-center justify-between">
+          {/* Левая кнопка */}
+          <div className="w-10 h-10" />
+
+          {/* Центральная кнопка создания поста */}
+          <label className="relative w-16 h-16 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
+            <input
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={handleUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+            {/* Логотип или иконка */}
+            <div className="w-14 h-14 flex items-center justify-center">
+              {/* Замени на <Image> когда будет логотип */}
+              <svg viewBox="0 0 60 60" className="w-14 h-14">
+                {[0, 1, 2, 3, 4].map((i) => {
+                  const angle = (i - 2) * 14
+                  return (
+                    <rect
+                      key={i}
+                      x={22 + i * 2}
+                      y={6}
+                      width="12"
+                      height="36"
+                      rx="3"
+                      fill="white"
+                      opacity={0.15 + i * 0.12}
+                      transform={`rotate(${angle}, 30, 42)`}
+                    />
+                  )
+                })}
+              </svg>
+            </div>
+            {/* Плюсик */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                <span className="text-white text-xl font-bold leading-none">+</span>
+              </div>
+            </div>
+          </label>
+
+          {/* Правая кнопка */}
+          <div className="w-10 h-10" />
+        </div>
+      </div>
     </>
   )
 }
