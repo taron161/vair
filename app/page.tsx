@@ -1,3 +1,8 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import FanGallery from '@/components/FanGallery'
 
 const demoPhotos = [
@@ -9,21 +14,42 @@ const demoPhotos = [
 ]
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) router.push('/login')
+      else setUser(user)
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) return null
+
   return (
-    <main className="min-h-screen bg-black flex justify-center">
-      <div className="w-full max-w-[460px] min-h-screen bg-zinc-900 flex flex-col">
-        <header className="px-4 py-3 border-b border-white/10">
-          <h1 className="text-white text-xl font-bold">VAIR</h1>
-        </header>
-
-        <div className="flex-1 flex items-center justify-center">
-          <FanGallery photos={demoPhotos} />
+    <>
+      <header className="px-4 py-3 border-b border-white/10 flex justify-between items-center">
+        <h1 className="text-white text-xl font-bold">VAIR</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-white/50 text-sm">{user?.email}</span>
+          <button
+            onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+            className="text-red-400 text-sm hover:text-red-300 transition-colors"
+          >
+            Выйти
+          </button>
         </div>
+      </header>
 
-        <nav className="px-4 py-3 border-t border-white/10">
-          <p className="text-white/50 text-sm text-center">🏠</p>
-        </nav>
+      <div className="flex-1 flex items-center justify-center">
+        <FanGallery photos={demoPhotos} />
       </div>
-    </main>
+
+      <nav className="px-4 py-3 border-t border-white/10">
+        <p className="text-white/50 text-sm text-center">🏠</p>
+      </nav>
+    </>
   )
 }
