@@ -22,6 +22,7 @@ export default function FanGallery({ photos, caption }: FanGalleryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
   const sortedPhotos = useMemo(() => {
     if (photos.length <= 1) return photos;
@@ -71,19 +72,21 @@ export default function FanGallery({ photos, caption }: FanGalleryProps) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (sortedPhotos.length <= 1) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    const threshold = 50;
+    const diffX = e.changedTouches[0].clientX - touchStartX.current;
+    const diffY = e.changedTouches[0].clientY - touchStartY.current;
 
-    if (Math.abs(diff) < threshold) return;
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
+    if (Math.abs(diffX) < 50) return;
 
     const currentIndex = sortedPhotos.findIndex(p => p.id === (currentActive || photos[0].id));
     let nextIndex = currentIndex;
 
-    if (diff > 0) {
+    if (diffX > 0) {
       nextIndex = currentIndex > 0 ? currentIndex - 1 : sortedPhotos.length - 1;
     } else {
       nextIndex = currentIndex < sortedPhotos.length - 1 ? currentIndex + 1 : 0;
