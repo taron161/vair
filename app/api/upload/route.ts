@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     const files = formData.getAll('files') as File[]
     const userId = formData.get('userId') as string
     const caption = formData.get('caption') as string
+    const hashtagsRaw = formData.get('hashtags') as string
 
     console.log('Upload started:', { filesCount: files.length, userId })
 
@@ -18,6 +19,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Максимум 7 файлов в одном посте' }, { status: 400 })
     }
 
+    // Форматируем хештеги
+    let formattedHashtags = ''
+    if (hashtagsRaw) {
+      formattedHashtags = hashtagsRaw
+        .split(/[\s,;]+/)
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0)
+        .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+        .join(' ')
+    }
+
+    const fullCaption = [caption || '', formattedHashtags].filter(Boolean).join('\n')
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -26,13 +40,13 @@ export async function POST(request: Request) {
     // Создаём пост
     const postId = crypto.randomUUID()
     console.log('Creating post:', postId)
-    
+
     const { error: postError } = await supabase
       .from('Post')
       .insert({
         id: postId,
         userId: userId,
-        caption: caption || null,
+        caption: fullCaption || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
@@ -88,8 +102,9 @@ export async function POST(request: Request) {
 
     console.log('All done!')
     return NextResponse.json({ success: true, postId })
-  } catch (err: any) {
-    console.error('General error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('General error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

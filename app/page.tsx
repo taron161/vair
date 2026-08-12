@@ -3,7 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import FanGallery from '@/components/FanGallery'
+import dynamic from 'next/dynamic'
+import PostEditor from '@/components/PostEditor'
+
+const FanGallery = dynamic(() => import('@/components/FanGallery'), {
+  ssr: false,
+})
 
 interface Media {
   id: string
@@ -19,11 +24,17 @@ interface Post {
   media: Media[]
 }
 
+interface UserData {
+  id: string
+  email?: string
+}
+
 export default function Home() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [editorFiles, setEditorFiles] = useState<File[] | null>(null)
   const router = useRouter()
 
   const loadPosts = useCallback(async (userId: string) => {
@@ -102,23 +113,36 @@ export default function Home() {
     })
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || !files.length || !user) return
+    if (!files || !files.length) return
+    setEditorFiles(Array.from(files))
+    e.target.value = ''
+  }
+
+  const handleEditorSave = async (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => {
+    if (!user) return
 
     setUploading(true)
+    setEditorFiles(null)
 
     const formData = new FormData()
-    for (let i = 0; i < files.length; i++) {
-      let file = files[i]
 
+    const orderedMedia = [...data.media]
+    const cover = orderedMedia.splice(data.coverIndex, 1)
+    const reordered = [...cover, ...orderedMedia]
+
+    for (let i = 0; i < reordered.length; i++) {
+      let file = reordered[i]
       if (file.type.startsWith('image/') && !file.type.includes('gif')) {
         file = await compressImage(file)
       }
-
       formData.append('files', file)
     }
+
     formData.append('userId', user.id)
+    formData.append('caption', data.caption)
+    formData.append('hashtags', data.hashtags)
 
     const res = await fetch('/api/upload', {
       method: 'POST',
@@ -130,7 +154,6 @@ export default function Home() {
     }
 
     setUploading(false)
-    e.target.value = ''
   }
 
   if (loading) return null
@@ -150,7 +173,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto pb-24 pt-[30px]">
         {posts.length === 0 ? (
           <div className="flex items-center justify-center h-full px-6">
             <div className="text-center">
@@ -162,7 +185,7 @@ export default function Home() {
                   type="file"
                   accept="image/*,video/*"
                   multiple
-                  onChange={handleUpload}
+                  onChange={handleFileSelect}
                   className="hidden"
                   disabled={uploading}
                 />
@@ -173,10 +196,7 @@ export default function Home() {
           <div className="space-y-6 pb-4">
             {posts.map((post) => (
               <div key={post.id} className="border-b border-white/5 pb-4">
-                {post.caption && (
-                  <p className="text-white/80 text-sm px-4 py-2">{post.caption}</p>
-                )}
-                <FanGallery photos={post.media} />
+                <FanGallery photos={post.media} caption={post.caption} />
               </div>
             ))}
           </div>
@@ -184,20 +204,20 @@ export default function Home() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-        <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-2 flex items-center justify-between">
+        <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-1.5 flex items-center justify-between">
           <div className="w-10 h-10" />
 
-          <label className="relative w-16 h-16 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
+          <label className="relative w-12 h-12 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
             <input
               type="file"
               accept="image/*,video/*"
               multiple
-              onChange={handleUpload}
+              onChange={handleFileSelect}
               className="hidden"
               disabled={uploading}
             />
-            <div className="w-14 h-14 flex items-center justify-center">
-              <svg viewBox="0 0 60 60" className="w-14 h-14">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <svg viewBox="0 0 60 60" className="w-10 h-10">
                 {[0, 1, 2, 3, 4].map((i) => {
                   const angle = (i - 2) * 14
                   return (
@@ -217,8 +237,8 @@ export default function Home() {
               </svg>
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                <span className="text-white text-xl font-bold leading-none">+</span>
+              <div className="w-6 h-6 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                <span className="text-white text-lg font-bold leading-none">+</span>
               </div>
             </div>
           </label>
@@ -226,6 +246,14 @@ export default function Home() {
           <div className="w-10 h-10" />
         </div>
       </div>
+
+      {editorFiles && (
+        <PostEditor
+          files={editorFiles}
+          onSave={handleEditorSave}
+          onCancel={() => setEditorFiles(null)}
+        />
+      )}
     </>
   )
 }

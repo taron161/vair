@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 interface Photo {
@@ -12,116 +12,201 @@ interface Photo {
 
 interface FanGalleryProps {
   photos: Photo[];
+  caption?: string | null;
 }
 
-export default function FanGallery({ photos }: FanGalleryProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+export default function FanGallery({ photos, caption }: FanGalleryProps) {
+  const [activeId, setActiveId] = useState<string | null>(
+    photos.length > 1 ? photos[0].id : null
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const touchStartX = useRef<number>(0);
+
+  const sortedPhotos = useMemo(() => {
+    if (photos.length <= 1) return photos;
+    const cover = photos[0];
+    const rest = photos.slice(1);
+    const half = Math.floor(rest.length / 2);
+    const left = rest.slice(0, half);
+    const right = rest.slice(half);
+    return [...left, cover, ...right];
+  }, [photos]);
+
+  const { description, hashtags } = useMemo(() => {
+    if (!caption) return { description: '', hashtags: [] };
+    const lines = caption.split('\n');
+    const desc: string[] = [];
+    const tags: string[] = [];
+    lines.forEach(line => {
+      const words = line.trim().split(/\s+/);
+      const lineTags = words.filter(w => w.startsWith('#'));
+      const lineText = words.filter(w => !w.startsWith('#')).join(' ');
+      if (lineText) desc.push(lineText);
+      tags.push(...lineTags);
+    });
+    return { description: desc.join('\n'), hashtags: tags };
+  }, [caption]);
+
+  const currentActive = activeId;
 
   useEffect(() => {
     videoRefs.current.forEach((video, id) => {
-      if (id === activeId) {
+      if (id === currentActive) {
         video.play().catch(() => {});
       } else {
         video.pause();
       }
     });
-  }, [activeId]);
+  }, [currentActive]);
 
   const handleClick = (photo: Photo) => {
-    setActiveId(activeId === photo.id ? null : photo.id);
+    if (sortedPhotos.length <= 1) return;
+    if (activeId === photo.id) {
+      setActiveId(null);
+    } else {
+      setActiveId(photo.id);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (sortedPhotos.length <= 1) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    const threshold = 50;
+
+    if (Math.abs(diff) < threshold) return;
+
+    const currentIndex = sortedPhotos.findIndex(p => p.id === (currentActive || photos[0].id));
+    let nextIndex = currentIndex;
+
+    if (diff > 0) {
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : sortedPhotos.length - 1;
+    } else {
+      nextIndex = currentIndex < sortedPhotos.length - 1 ? currentIndex + 1 : 0;
+    }
+
+    setActiveId(sortedPhotos[nextIndex].id);
   };
 
   return (
-    <div className="relative w-full h-[500px] flex items-center justify-center overflow-hidden">
-      {photos.map((photo, index) => {
-        const isActive = activeId === photo.id;
-        const isVideo = photo.type === 'video';
+    <div className="space-y-[10px]">
+      <div
+        ref={containerRef}
+        className="relative w-full h-[500px] flex items-center justify-center overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {sortedPhotos.map((photo, index) => {
+          const isActive = sortedPhotos.length === 1 ? true : currentActive === photo.id;
+          const isVideo = photo.type === 'video';
 
-        // Вычисляем позицию: активная в центре, остальные разъезжаются
-        let xOffset = 0;
-        let rotate = 0;
-        let scale = 0.85;
-        let zIndex = index;
+          let xOffset = 0;
+          let rotate = 0;
+          let scale = sortedPhotos.length === 1 ? 1.05 : 0.85;
+          let zIndex = index;
 
-        if (activeId) {
-          const activeIndex = photos.findIndex(p => p.id === activeId);
-          if (isActive) {
+          const total = sortedPhotos.length;
+
+          if (sortedPhotos.length === 1) {
+            xOffset = 0;
             rotate = 0;
             scale = 1.05;
-            zIndex = photos.length + 1;
-          } else if (index < activeIndex) {
-            // Карточки слева уезжают влево
-            xOffset = -80 - (activeIndex - index) * 20;
-            rotate = -15 - (activeIndex - index) * 3;
-            scale = 0.7;
-            zIndex = index;
-          } else {
-            // Карточки справа уезжают вправо
-            xOffset = 80 + (index - activeIndex) * 20;
-            rotate = 15 + (index - activeIndex) * 3;
-            scale = 0.7;
-            zIndex = index;
-          }
-        } else {
-          // Веер по умолчанию
-          rotate = (index - (photos.length - 1) / 2) * 12;
-          scale = 0.85;
-        }
+            zIndex = 1;
+          } else if (currentActive) {
+            const activeIndex = sortedPhotos.findIndex(p => p.id === currentActive);
 
-        return (
-          <motion.div
-            key={photo.id}
-            className="absolute cursor-pointer origin-bottom select-none"
-            style={{
-              width: isActive ? '280px' : '160px',
-              height: isActive ? '400px' : '280px',
-              transformOrigin: 'bottom center',
-              zIndex: zIndex,
-            }}
-            animate={{
-              x: xOffset,
-              rotate: rotate,
-              scale: scale,
-              y: isActive ? -30 : 0,
-            }}
-            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-            onClick={() => handleClick(photo)}
-          >
-            <div className={`w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 transition-all relative ${
-              isVideo 
-                ? 'border-purple-500/50 shadow-purple-500/30' 
-                : 'border-emerald-400/30 shadow-emerald-400/10'
-            }`}>
-              {isVideo ? (
-                <video
-                  ref={(el) => {
-                    if (el) videoRefs.current.set(photo.id, el);
-                  }}
-                  src={photo.url}
-                  className="w-full h-full object-cover"
-                  preload="metadata"
-                  playsInline
-                  loop
-                  muted={!isActive}
-                />
-              ) : (
-                <img
-                  src={photo.url}
-                  alt={photo.caption || 'Photo'}
-                  className="w-full h-full object-cover select-none pointer-events-none"
-                  draggable={false}
-                />
-              )}
-              {isActive && photo.caption && (
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent rounded-b-2xl">
-                  <p className="text-white font-medium text-xs">{photo.caption}</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        );
-      })}
+            if (isActive) {
+              rotate = 0;
+              scale = 1.05;
+              zIndex = total + 1;
+            } else {
+              if (index < activeIndex) {
+                const posFromCenter = activeIndex - index;
+                xOffset = -(120 + (posFromCenter - 1) * 35);
+                rotate = -10 - (posFromCenter - 1) * 4;
+              } else {
+                const posFromCenter = index - activeIndex;
+                xOffset = 120 + (posFromCenter - 1) * 35;
+                rotate = 10 + (posFromCenter - 1) * 4;
+              }
+              scale = 0.75;
+              zIndex = total - Math.abs(index - activeIndex);
+            }
+          } else {
+            rotate = (index - (total - 1) / 2) * 12;
+            scale = 0.85;
+          }
+
+          return (
+            <motion.div
+              key={photo.id}
+              className="absolute cursor-pointer origin-bottom select-none"
+              style={{
+                width: isActive ? '280px' : '150px',
+                height: isActive ? '400px' : '260px',
+                transformOrigin: 'bottom center',
+                zIndex: zIndex,
+              }}
+              animate={{
+                x: xOffset,
+                rotate: rotate,
+                scale: scale,
+                y: isActive ? -30 : 0,
+              }}
+              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+              onClick={() => handleClick(photo)}
+            >
+              <div className={`w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 transition-all relative ${
+                isVideo 
+                  ? 'border-purple-500/50 shadow-purple-500/30' 
+                  : 'border-emerald-400/30 shadow-emerald-400/10'
+              }`}>
+                {isVideo ? (
+                  <video
+                    ref={(el) => {
+                      if (el) videoRefs.current.set(photo.id, el);
+                    }}
+                    src={photo.url}
+                    className="w-full h-full object-cover"
+                    preload="metadata"
+                    playsInline
+                    loop
+                    muted={!isActive}
+                  />
+                ) : (
+                  <img
+                    src={photo.url}
+                    alt=""
+                    className="w-full h-full object-cover select-none pointer-events-none"
+                    draggable={false}
+                  />
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {(description || hashtags.length > 0) && (
+        <div className="px-4">
+          {description && (
+            <p className="text-white/80 text-sm">{description}</p>
+          )}
+          {hashtags.length > 0 && (
+            <p className="text-emerald-400 text-xs mt-[5px]">
+              {hashtags.map((tag, i) => (
+                <span key={i} className="cursor-pointer hover:underline mr-2">
+                  {tag}
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
