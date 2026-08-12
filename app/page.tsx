@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { motion } from 'framer-motion'
 import PostEditor from '@/components/PostEditor'
+import LoadingScreen from '@/components/LoadingScreen'
 
 const FanGallery = dynamic(() => import('@/components/FanGallery'), {
   ssr: false,
@@ -156,7 +158,7 @@ export default function Home() {
     setUploading(false)
   }
 
-  if (loading) return null
+  if (loading) return <LoadingScreen />
 
   return (
     <>
@@ -216,31 +218,61 @@ export default function Home() {
               className="hidden"
               disabled={uploading}
             />
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg viewBox="0 0 60 60" className="w-10 h-10">
-                {[0, 1, 2, 3, 4].map((i) => {
-                  const angle = (i - 2) * 14
-                  return (
-                    <rect
-                      key={i}
-                      x={22 + i * 2}
-                      y={6}
-                      width="12"
-                      height="36"
-                      rx="3"
-                      fill="white"
-                      opacity={0.15 + i * 0.12}
-                      transform={`rotate(${angle}, 30, 42)`}
-                    />
-                  )
-                })}
-              </svg>
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-6 h-6 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                <span className="text-white text-lg font-bold leading-none">+</span>
-              </div>
-            </div>
+
+            {uploading ? (
+              <motion.div
+                className="w-10 h-10 flex items-center justify-center"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+              >
+                <svg viewBox="0 0 60 60" className="w-10 h-10">
+                  {[0, 1, 2, 3, 4].map((i) => {
+                    const angle = (i - 2) * 14
+                    return (
+                      <rect
+                        key={i}
+                        x={22 + i * 2}
+                        y={6}
+                        width="12"
+                        height="36"
+                        rx="3"
+                        fill="white"
+                        opacity={0.15 + i * 0.12}
+                        transform={`rotate(${angle}, 30, 42)`}
+                      />
+                    )
+                  })}
+                </svg>
+              </motion.div>
+            ) : (
+              <>
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <svg viewBox="0 0 60 60" className="w-10 h-10">
+                    {[0, 1, 2, 3, 4].map((i) => {
+                      const angle = (i - 2) * 14
+                      return (
+                        <rect
+                          key={i}
+                          x={22 + i * 2}
+                          y={6}
+                          width="12"
+                          height="36"
+                          rx="3"
+                          fill="white"
+                          opacity={0.15 + i * 0.12}
+                          transform={`rotate(${angle}, 30, 42)`}
+                        />
+                      )
+                    })}
+                  </svg>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                    <span className="text-white text-lg font-bold leading-none">+</span>
+                  </div>
+                </div>
+              </>
+            )}
           </label>
 
           <div className="w-10 h-10" />
