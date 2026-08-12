@@ -24,14 +24,22 @@ export default function LoginPage() {
     setError('')
 
     if (isRegister) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) {
         if (error.message.includes('already registered') || error.message.includes('already exists')) {
           setError('Этот email уже зарегистрирован. Войдите или используйте другой.')
         } else {
           setError(error.message)
         }
-      } else {
+      } else if (data.user) {
+        const handle = Math.random().toString().slice(2, 12)
+        await supabase.from('Profile').insert({
+          id: crypto.randomUUID(),
+          userId: data.user.id,
+          handle: handle,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
         router.push('/')
       }
     } else {

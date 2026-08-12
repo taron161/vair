@@ -1,28 +1,53 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useUpload } from '@/lib/UploadContext';
 
-interface AppFooterProps {
-  uploading: boolean;
-  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+export default function AppFooter() {
+  const pathname = usePathname();
+  const [handle, setHandle] = useState<string | null>(null);
+  const { uploading, setEditorFiles } = useUpload();
 
-export default function AppFooter({ uploading, onFileSelect }: AppFooterProps) {
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const { data } = await supabase
+          .from('Profile')
+          .select('handle')
+          .eq('userId', user.id)
+          .single();
+        if (data) setHandle(data.handle);
+      }
+    });
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    setEditorFiles(Array.from(files));
+    e.target.value = '';
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
       <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-1.5 flex items-center justify-between">
-        <div className="w-10 h-10" />
+        <Link href="/explore" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/explore' ? 'text-white' : 'text-white/40'}`}>
+          🔍
+        </Link>
 
         <label className="relative w-12 h-12 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
           <input
             type="file"
             accept="image/*,video/*"
             multiple
-            onChange={onFileSelect}
+            onChange={handleFileSelect}
             className="hidden"
             disabled={uploading}
           />
-
           {uploading ? (
             <motion.div
               className="w-10 h-10 flex items-center justify-center"
@@ -33,17 +58,7 @@ export default function AppFooter({ uploading, onFileSelect }: AppFooterProps) {
                 {[0, 1, 2, 3, 4].map((i) => {
                   const angle = (i - 2) * 14;
                   return (
-                    <rect
-                      key={i}
-                      x={22 + i * 2}
-                      y={6}
-                      width="12"
-                      height="36"
-                      rx="3"
-                      fill="white"
-                      opacity={0.15 + i * 0.12}
-                      transform={`rotate(${angle}, 30, 42)`}
-                    />
+                    <rect key={i} x={22 + i * 2} y={6} width="12" height="36" rx="3" fill="white" opacity={0.15 + i * 0.12} transform={`rotate(${angle}, 30, 42)`} />
                   );
                 })}
               </svg>
@@ -55,17 +70,7 @@ export default function AppFooter({ uploading, onFileSelect }: AppFooterProps) {
                   {[0, 1, 2, 3, 4].map((i) => {
                     const angle = (i - 2) * 14;
                     return (
-                      <rect
-                        key={i}
-                        x={22 + i * 2}
-                        y={6}
-                        width="12"
-                        height="36"
-                        rx="3"
-                        fill="white"
-                        opacity={0.15 + i * 0.12}
-                        transform={`rotate(${angle}, 30, 42)`}
-                      />
+                      <rect key={i} x={22 + i * 2} y={6} width="12" height="36" rx="3" fill="white" opacity={0.15 + i * 0.12} transform={`rotate(${angle}, 30, 42)`} />
                     );
                   })}
                 </svg>
@@ -79,7 +84,13 @@ export default function AppFooter({ uploading, onFileSelect }: AppFooterProps) {
           )}
         </label>
 
-        <div className="w-10 h-10" />
+        {handle ? (
+          <Link href={`/${handle}`} className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === `/${handle}` ? 'text-white' : 'text-white/40'}`}>
+            👤
+          </Link>
+        ) : (
+          <div className="w-10 h-10" />
+        )}
       </div>
     </div>
   );

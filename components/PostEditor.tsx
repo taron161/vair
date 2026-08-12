@@ -13,10 +13,11 @@ interface PostEditorProps {
   files: File[];
   onSave: (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => void;
   onCancel: () => void;
+  uploading?: boolean;
 }
 
-export default function PostEditor({ files, onSave, onCancel }: PostEditorProps) {
-  const [media, setMedia] = useState<MediaItem[]>(() =>
+export default function PostEditor({ files, onSave, onCancel, uploading = false }: PostEditorProps) {
+  const [media] = useState<MediaItem[]>(() =>
     files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
@@ -28,21 +29,22 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
   const [hashtags, setHashtags] = useState('');
 
   const handleSave = () => {
+    if (uploading) return;
     const filesArray = media.map((m) => m.file);
     onSave({ media: filesArray, coverIndex, caption, hashtags });
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex justify-center">
-      <div className="w-full max-w-[460px] bg-zinc-900 flex flex-col h-full">
+      <div className="w-full max-w-[460px] bg-zinc-900 flex flex-col h-full relative">
         {/* Шапка */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <button onClick={onCancel} className="text-white/60 text-sm hover:text-white">
+          <button onClick={onCancel} disabled={uploading} className="text-white/60 text-sm hover:text-white disabled:opacity-50">
             Отмена
           </button>
           <h2 className="text-white font-semibold">Новый пост</h2>
-          <button onClick={handleSave} className="text-emerald-400 text-sm font-semibold hover:text-emerald-300">
-            Сохранить
+          <button onClick={handleSave} disabled={uploading} className="text-emerald-400 text-sm font-semibold hover:text-emerald-300 disabled:opacity-50">
+            {uploading ? 'Загрузка...' : 'Сохранить'}
           </button>
         </div>
 
@@ -54,6 +56,7 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
               <motion.button
                 key={index}
                 onClick={() => setCoverIndex(index)}
+                disabled={uploading}
                 className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
                   coverIndex === index ? 'border-emerald-400 scale-110' : 'border-white/10 opacity-60'
                 }`}
@@ -63,11 +66,6 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
                   <video src={item.preview} className="w-full h-full object-cover" muted />
                 ) : (
                   <img src={item.preview} className="w-full h-full object-cover" alt="" />
-                )}
-                {index === 0 && (
-                  <div className="absolute bottom-0 right-0 bg-emerald-400 text-black text-[10px] px-1 rounded-tl">
-                    +{media.length - 1}
-                  </div>
                 )}
               </motion.button>
             ))}
@@ -80,17 +78,12 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
             {media.map((item, index) => {
               const isCover = index === coverIndex;
               const offset = (index - coverIndex) * 25;
-
               return (
                 <motion.div
                   key={index}
                   className="absolute w-20 h-32 rounded-lg overflow-hidden border-2 border-white/10"
                   style={{ zIndex: isCover ? 10 : 1 }}
-                  animate={{
-                    x: offset,
-                    rotate: isCover ? 0 : offset * 0.3,
-                    scale: isCover ? 1.15 : 0.8,
-                  }}
+                  animate={{ x: offset, rotate: isCover ? 0 : offset * 0.3, scale: isCover ? 1.15 : 0.8 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 >
                   {item.type === 'video' ? (
@@ -112,7 +105,8 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
             placeholder="Добавьте описание..."
             maxLength={500}
             rows={3}
-            className="w-full bg-white/5 text-white placeholder-white/30 rounded-xl px-4 py-3 resize-none focus:outline-none focus:bg-white/10 text-sm"
+            disabled={uploading}
+            className="w-full bg-white/5 text-white placeholder-white/30 rounded-xl px-4 py-3 resize-none focus:outline-none focus:bg-white/10 text-sm disabled:opacity-50"
           />
           <p className="text-white/30 text-xs text-right mt-1">{caption.length}/500</p>
         </div>
@@ -123,9 +117,18 @@ export default function PostEditor({ files, onSave, onCancel }: PostEditorProps)
             value={hashtags}
             onChange={(e) => setHashtags(e.target.value)}
             placeholder="#хештеги"
-            className="w-full bg-white/5 text-emerald-300 placeholder-white/20 rounded-xl px-4 py-3 focus:outline-none focus:bg-white/10 text-sm"
+            disabled={uploading}
+            className="w-full bg-white/5 text-emerald-300 placeholder-white/20 rounded-xl px-4 py-3 focus:outline-none focus:bg-white/10 text-sm disabled:opacity-50"
           />
         </div>
+
+        {/* Загрузчик поверх */}
+        {uploading && (
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
+            <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mb-3" />
+            <p className="text-white/70 text-sm">Загружаем...</p>
+          </div>
+        )}
       </div>
     </div>
   );
