@@ -12,10 +12,9 @@ interface Photo {
 
 interface FanGalleryProps {
   photos: Photo[];
-  caption?: string | null;
 }
 
-export default function FanGallery({ photos, caption }: FanGalleryProps) {
+export default function FanGallery({ photos }: FanGalleryProps) {
   const [activeId, setActiveId] = useState<string | null>(
     photos.length > 1 ? photos[0].id : null
   );
@@ -33,21 +32,6 @@ export default function FanGallery({ photos, caption }: FanGalleryProps) {
     const right = rest.slice(half);
     return [...left, cover, ...right];
   }, [photos]);
-
-  const { description, hashtags } = useMemo(() => {
-    if (!caption) return { description: '', hashtags: [] };
-    const lines = caption.split('\n');
-    const desc: string[] = [];
-    const tags: string[] = [];
-    lines.forEach(line => {
-      const words = line.trim().split(/\s+/);
-      const lineTags = words.filter(w => w.startsWith('#'));
-      const lineText = words.filter(w => !w.startsWith('#')).join(' ');
-      if (lineText) desc.push(lineText);
-      tags.push(...lineTags);
-    });
-    return { description: desc.join('\n'), hashtags: tags };
-  }, [caption]);
 
   const currentActive = activeId;
 
@@ -96,120 +80,101 @@ export default function FanGallery({ photos, caption }: FanGalleryProps) {
   };
 
   return (
-    <div className="space-y-[10px]">
-      <div
-        ref={containerRef}
-        className="relative w-full h-[500px] flex items-center justify-center overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {sortedPhotos.map((photo, index) => {
-          const isActive = sortedPhotos.length === 1 ? true : currentActive === photo.id;
-          const isVideo = photo.type === 'video';
+    <div
+      ref={containerRef}
+      className="relative w-full h-[480px] flex items-center justify-center overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {sortedPhotos.map((photo, index) => {
+        const isActive = sortedPhotos.length === 1 ? true : currentActive === photo.id;
+        const isVideo = photo.type === 'video';
 
-          let xOffset = 0;
-          let rotate = 0;
-          let scale = sortedPhotos.length === 1 ? 1.05 : 0.85;
-          let zIndex = index;
+        let xOffset = 0;
+        let rotate = 0;
+        let scale = sortedPhotos.length === 1 ? 1 : 0.85;
+        let zIndex = index;
 
-          const total = sortedPhotos.length;
+        const total = sortedPhotos.length;
 
-          if (sortedPhotos.length === 1) {
-            xOffset = 0;
+        if (sortedPhotos.length === 1) {
+          xOffset = 0;
+          rotate = 0;
+          scale = 1;
+          zIndex = 1;
+        } else if (currentActive) {
+          const activeIndex = sortedPhotos.findIndex(p => p.id === currentActive);
+
+          if (isActive) {
             rotate = 0;
-            scale = 1.05;
-            zIndex = 1;
-          } else if (currentActive) {
-            const activeIndex = sortedPhotos.findIndex(p => p.id === currentActive);
-
-            if (isActive) {
-              rotate = 0;
-              scale = 1.05;
-              zIndex = total + 1;
-            } else {
-              if (index < activeIndex) {
-                const posFromCenter = activeIndex - index;
-                xOffset = -(120 + (posFromCenter - 1) * 35);
-                rotate = -10 - (posFromCenter - 1) * 4;
-              } else {
-                const posFromCenter = index - activeIndex;
-                xOffset = 120 + (posFromCenter - 1) * 35;
-                rotate = 10 + (posFromCenter - 1) * 4;
-              }
-              scale = 0.75;
-              zIndex = total - Math.abs(index - activeIndex);
-            }
+            scale = 1.02;
+            zIndex = total + 1;
           } else {
-            rotate = (index - (total - 1) / 2) * 12;
-            scale = 0.85;
+            if (index < activeIndex) {
+              const posFromCenter = activeIndex - index;
+              xOffset = -(120 + (posFromCenter - 1) * 35);
+              rotate = -10 - (posFromCenter - 1) * 4;
+            } else {
+              const posFromCenter = index - activeIndex;
+              xOffset = 120 + (posFromCenter - 1) * 35;
+              rotate = 10 + (posFromCenter - 1) * 4;
+            }
+            scale = 0.75;
+            zIndex = total - Math.abs(index - activeIndex);
           }
+        } else {
+          rotate = (index - (total - 1) / 2) * 12;
+          scale = 0.85;
+        }
 
-          return (
-            <motion.div
-              key={photo.id}
-              className="absolute cursor-pointer origin-bottom select-none"
-              style={{
-                width: isActive ? '280px' : '150px',
-                height: isActive ? '400px' : '260px',
-                transformOrigin: 'bottom center',
-                zIndex: zIndex,
-              }}
-              animate={{
-                x: xOffset,
-                rotate: rotate,
-                scale: scale,
-                y: isActive ? -30 : 0,
-              }}
-              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-              onClick={() => handleClick(photo)}
-            >
-              <div className={`w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 transition-all relative ${
-                isVideo 
-                  ? 'border-purple-500/50 shadow-purple-500/30' 
-                  : 'border-emerald-400/30 shadow-emerald-400/10'
-              }`}>
-                {isVideo ? (
-                  <video
-                    ref={(el) => {
-                      if (el) videoRefs.current.set(photo.id, el);
-                    }}
-                    src={photo.url}
-                    className="w-full h-full object-cover"
-                    preload="metadata"
-                    playsInline
-                    loop
-                    muted={!isActive}
-                  />
-                ) : (
-                  <img
-                    src={photo.url}
-                    alt=""
-                    className="w-full h-full object-cover select-none pointer-events-none"
-                    draggable={false}
-                  />
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {(description || hashtags.length > 0) && (
-        <div className="px-4">
-          {description && (
-            <p className="text-white/80 text-sm">{description}</p>
-          )}
-          {hashtags.length > 0 && (
-            <p className="text-emerald-400 text-xs mt-[5px]">
-              {hashtags.map((tag, i) => (
-                <span key={i} className="cursor-pointer hover:underline mr-2">
-                  {tag}
-                </span>
-              ))}
-            </p>
-          )}
-        </div>
-      )}
+        return (
+          <motion.div
+            key={photo.id}
+            className="absolute cursor-pointer origin-bottom select-none"
+            style={{
+              width: isActive ? '260px' : '150px',
+              height: isActive ? '370px' : '260px',
+              transformOrigin: 'bottom center',
+              zIndex: zIndex,
+            }}
+            animate={{
+              x: xOffset,
+              rotate: rotate,
+              scale: scale,
+              y: isActive ? -10 : 0,
+            }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+            onClick={() => handleClick(photo)}
+          >
+            <div className={`w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 transition-all relative ${
+              isVideo 
+                ? 'border-purple-500/50 shadow-purple-500/30' 
+                : 'border-emerald-400/30 shadow-emerald-400/10'
+            }`}>
+              {isVideo ? (
+                <video
+                  ref={(el) => {
+                    if (el) videoRefs.current.set(photo.id, el);
+                  }}
+                  src={photo.url}
+                  className="w-full h-full object-cover"
+                  preload="metadata"
+                  playsInline
+                  loop
+                  muted={!isActive}
+                />
+              ) : (
+                <img
+                  src={photo.url}
+                  alt=""
+                  className="w-full h-full object-cover select-none pointer-events-none"
+                  draggable={false}
+                />
+              )}
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

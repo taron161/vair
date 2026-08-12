@@ -1,8 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const FanGallery = dynamic(() => import('@/components/FanGallery'), { ssr: false });
+import PostCard from '@/components/PostCard';
 
 interface Media {
   id: string;
@@ -20,11 +18,9 @@ interface Post {
 
 export default function PostListClient({ posts }: { posts: Post[] }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {posts.map((post) => (
-        <div key={post.id} className="border-b border-white/5 pb-4 px-4">
-          <FanGallery photos={post.media} caption={post.caption} />
-        </div>
+        <PostCard key={post.id} post={post} />
       ))}
     </div>
   );

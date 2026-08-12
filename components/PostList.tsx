@@ -29,7 +29,7 @@ export default function PostList({ posts }: PostListProps) {
     <div className="space-y-6 pb-4">
       {posts.map((post) => (
         <div key={post.id} className="border-b border-white/5 pb-4">
-          <FanGallery photos={post.media} caption={post.caption} />
+          <FanGallery photos={post.media}/>
         </div>
       ))}
     </div>
