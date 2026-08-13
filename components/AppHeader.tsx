@@ -10,16 +10,18 @@ interface AppHeaderProps {
 
 export default function AppHeader({ email }: AppHeaderProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
         const { data: profile } = await supabase
           .from('Profile')
-          .select('avatarUrl')
+          .select('avatarUrl, displayName')
           .eq('userId', user.id)
           .single();
         if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
+        if (profile?.displayName) setDisplayName(profile.displayName);
       }
     });
   }, []);
@@ -35,7 +37,7 @@ export default function AppHeader({ email }: AppHeaderProps) {
         {avatarUrl ? (
           <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
         ) : (
-          email?.charAt(0).toUpperCase() || '?'
+          displayName?.charAt(0).toUpperCase() || email?.charAt(0).toUpperCase() || '?'
         )}
       </Link>
     </header>

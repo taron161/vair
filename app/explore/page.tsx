@@ -87,10 +87,10 @@ function ExploreContent() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">
-                  @{profile.handle}
+                  {profile.displayName || `@${profile.handle}`}
                 </p>
                 {profile.displayName && (
-                  <p className="text-white/40 text-xs truncate">{profile.displayName}</p>
+                  <p className="text-white/40 text-xs truncate">@{profile.handle}</p>
                 )}
               </div>
             </Link>

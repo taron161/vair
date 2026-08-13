@@ -13,6 +13,7 @@ interface CommentWithProfile {
   createdAt: string;
   handle?: string;
   avatarUrl?: string;
+  displayName?: string;
 }
 
 interface CommentsModalProps {
@@ -48,10 +49,10 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
           comments.map(async (comment) => {
             const { data: profile } = await supabase
               .from('Profile')
-              .select('handle, avatarUrl')
+              .select('handle, avatarUrl, displayName')
               .eq('userId', comment.userId)
               .single();
-            return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl };
+            return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl, displayName: profile?.displayName };
           })
         );
         setComments(commentsWithProfiles);
@@ -66,7 +67,7 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
 
   const handleReply = (comment: CommentWithProfile) => {
     setReplyingTo(comment.userId);
-    setText(`@${comment.handle || comment.userId.slice(0, 10)}, `);
+    setText(`@${comment.displayName || comment.handle || comment.userId.slice(0, 10)}, `);
     inputRef.current?.focus();
   };
 
@@ -97,10 +98,10 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
         comments.map(async (comment) => {
           const { data: profile } = await supabase
             .from('Profile')
-            .select('handle, avatarUrl')
+            .select('handle, avatarUrl, displayName')
             .eq('userId', comment.userId)
             .single();
-          return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl };
+          return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl, displayName: profile?.displayName };
         })
       );
       setComments(commentsWithProfiles);
@@ -153,7 +154,7 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
                   <div className="flex-1">
                     <Link href={`/${comment.handle || ''}`} onClick={onClose}>
                       <p className="text-white/50 text-xs mb-0.5 hover:text-white transition-colors">
-                        @{comment.handle || comment.userId.slice(0, 10)}
+                        {comment.displayName || `@${comment.handle}`}
                       </p>
                     </Link>
                     <p className="text-white/90 text-sm">{comment.text}</p>
