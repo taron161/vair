@@ -16,11 +16,16 @@ interface Post {
   media: Media[];
 }
 
-export default function PostListClient({ posts }: { posts: Post[] }) {
+interface PostListClientProps {
+  posts: Post[];
+  userId: string;
+}
+
+export default function PostListClient({ posts, userId }: PostListClientProps) {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard key={post.id} post={post} userId={userId} />
       ))}
     </div>
   );

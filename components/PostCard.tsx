@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import PostItem from '@/components/PostItem';
+import { supabase } from '@/lib/supabase';
 
 interface Media {
   id: string;
@@ -18,13 +19,79 @@ interface Post {
   media: Media[];
 }
 
-export default function PostCard({ post }: { post: Post }) {
+interface PostCardProps {
+  post: Post;
+  userId: string;
+}
+
+interface Like {
+  userId: string;
+}
+
+export default function PostCard({ post, userId }: PostCardProps) {
   const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [expandedTags, setExpandedTags] = useState(false);
 
   const description = post.caption?.split('\n').filter(line => !line.trim().startsWith('#')).join('\n') || '';
   const hashtags = post.caption?.split(/\s+/).filter(word => word.startsWith('#')) || [];
+
+  useEffect(() => {
+    const loadLikes = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id || '';
+
+      const { data: likes } = await supabase
+        .from('Like')
+        .select('*')
+        .eq('postId', post.id);
+
+      setLikesCount(likes?.length || 0);
+      setLiked(likes?.some((l: Like) => l.userId === currentUserId) || false);
+    };
+
+    loadLikes();
+  }, [post.id]);
+
+  const toggleLike = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id || '';
+
+    if (!currentUserId) return;
+
+    // Оптимистичное обновление
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikesCount((c) => (newLiked ? c + 1 : Math.max(0, c - 1)));
+
+    // Синхронизация с БД в фоне
+    if (newLiked) {
+      const { error } = await supabase.from('Like').insert({
+        id: crypto.randomUUID(),
+        postId: post.id,
+        userId: currentUserId,
+        createdAt: new Date().toISOString(),
+      });
+      if (error) {
+        // Откатываем при ошибке
+        console.error('Insert like error:', error);
+        setLiked(false);
+        setLikesCount((c) => Math.max(0, c - 1));
+      }
+    } else {
+      const { error } = await supabase
+        .from('Like')
+        .delete()
+        .eq('postId', post.id)
+        .eq('userId', currentUserId);
+      if (error) {
+        console.error('Delete like error:', error);
+        setLiked(true);
+        setLikesCount((c) => c + 1);
+      }
+    }
+  };
 
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
@@ -89,10 +156,11 @@ export default function PostCard({ post }: { post: Post }) {
 
       <div className="px-4 py-3 flex items-center gap-5 border-t border-white/5">
         <button
-          onClick={() => setLiked(!liked)}
-          className={`text-lg transition-transform active:scale-90 ${liked ? 'text-red-400' : 'text-white/50'}`}
+          onClick={toggleLike}
+          className={`flex items-center gap-1.5 text-lg transition-transform active:scale-90 ${liked ? 'text-red-400' : 'text-white/50'}`}
         >
-          {liked ? '❤️' : '🤍'}
+          <span>{liked ? '❤️' : '🤍'}</span>
+          <span className="text-sm">{likesCount}</span>
         </button>
         <button className="text-lg text-white/50 hover:text-blue-400 transition-colors">
           💬

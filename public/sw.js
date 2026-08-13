@@ -1,21 +1,25 @@
 const CACHE_NAME = 'vair-v1';
-const urlsToCache = [
-  '/',
-  '/manifest.json',
-];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
+  // Не кешируем API и Supabase запросы
+  if (
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('supabase')
+  ) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });

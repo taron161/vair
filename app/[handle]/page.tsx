@@ -58,17 +58,15 @@ export default async function UserProfilePage({ params }: { params: Promise<{ ha
   return (
     <UploadProvider>
       <HeaderClient email={profile.displayName || undefined} />
-
       <div className="flex-1 overflow-y-auto pt-[30px] pb-24">
         {postsWithMedia.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-white/50 text-sm">Нет постов</p>
           </div>
         ) : (
-          <PostListClient posts={postsWithMedia} />
+          <PostListClient posts={postsWithMedia} userId="" />
         )}
       </div>
-
       <AppFooter />
       <PostEditorWrapper />
     </UploadProvider>
