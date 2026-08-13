@@ -35,10 +35,17 @@ export default function AppFooter() {
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
       <div className="w-full max-w-[460px] bg-zinc-700/50 backdrop-blur-lg border-t border-white/15 px-4 py-1.5 flex items-center justify-between">
+        {/* Поиск */}
         <Link href="/explore" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/explore' ? 'text-white' : 'text-white/50'}`}>
           🔍
         </Link>
 
+        {/* Друзья */}
+        <Link href="/friends" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/friends' ? 'text-white' : 'text-white/50'}`}>
+          👥
+        </Link>
+
+        {/* Создать */}
         <label className="relative w-12 h-12 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
           <input
             type="file"
@@ -84,6 +91,12 @@ export default function AppFooter() {
           )}
         </label>
 
+        {/* Мессенджер */}
+        <Link href="/messages" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/messages' ? 'text-white' : 'text-white/50'}`}>
+          💬
+        </Link>
+
+        {/* Профиль */}
         {handle ? (
           <Link href={`/${handle}`} className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === `/${handle}` ? 'text-white' : 'text-white/50'}`}>
             👤
