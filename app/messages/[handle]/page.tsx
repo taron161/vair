@@ -13,6 +13,7 @@ interface Message {
   receiverId: string
   text: string
   createdAt: string
+  isRead: boolean
 }
 
 interface UserData {
@@ -36,11 +37,12 @@ function ChatContent() {
   const [text, setText] = useState('')
   const [receiver, setReceiver] = useState<Receiver | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showScrollDown, setShowScrollDown] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
-  const scrollToBottom = () => {
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior }), 50)
   }
 
   const sortMessages = (msgs: Message[]) => {
@@ -69,7 +71,7 @@ function ChatContent() {
 
     setMessages(sortMessages(filtered))
     setLoading(false)
-    scrollToBottom()
+    scrollToBottom('auto')
   }, [])
 
   useEffect(() => {
@@ -114,7 +116,7 @@ function ChatContent() {
               if (prev.some((m) => m.id === newMessage.id)) return prev
               return sortMessages([...prev, newMessage])
             })
-            scrollToBottom()
+            scrollToBottom('smooth')
           }
         }
       )
@@ -125,6 +127,20 @@ function ChatContent() {
     }
   }, [user, receiver])
 
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollTop = window.scrollY
+      const scrollHeight = document.documentElement.scrollHeight
+      const clientHeight = window.innerHeight
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+
+      setShowScrollDown(distanceFromBottom > 200)
+    }
+
+    window.addEventListener('scroll', handleWindowScroll)
+    return () => window.removeEventListener('scroll', handleWindowScroll)
+  }, [])
+
   const sendMessage = async () => {
     if (!text.trim() || !user || !receiver) return
 
@@ -134,6 +150,7 @@ function ChatContent() {
       receiverId: receiver.userId,
       text: text.trim(),
       createdAt: new Date().toISOString(),
+      isRead: false,
     }
 
     setText('')
@@ -144,6 +161,7 @@ function ChatContent() {
       receiverId: newMessage.receiverId,
       text: newMessage.text,
       createdAt: newMessage.createdAt,
+      isRead: false,
     })
 
     await loadMessages(user.id, receiver.userId)
@@ -155,8 +173,8 @@ function ChatContent() {
     <>
       <AppHeader email={user?.email} />
 
-      <div className="flex-1 flex flex-col pb-24">
-        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
+      <div className="flex-1 flex flex-col pb-16 relative">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold">
             {receiver?.avatarUrl ? (
               <img src={receiver.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -169,7 +187,7 @@ function ChatContent() {
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <div className="px-4 py-4 space-y-3">
           {messages.map((message) => {
             const isMine = message.senderId === user?.id
             const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
@@ -184,7 +202,14 @@ function ChatContent() {
                     ? 'bg-emerald-400 text-black rounded-br-sm'
                     : 'bg-zinc-700/50 text-white rounded-bl-sm'
                 }`}>
-                  <p className="text-sm">{message.text}</p>
+                  <p className="text-sm">
+                    {message.text}
+                    {isMine && (
+                      <span className="text-[10px] ml-1">
+                        {message.isRead ? '✓✓' : '✓'}
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <p className="text-[10px] mt-1 px-1 text-white/40">
                   {time}
@@ -195,7 +220,16 @@ function ChatContent() {
           <div ref={bottomRef} />
         </div>
 
-        <div className="px-4 py-3 border-t border-white/10">
+        {showScrollDown && (
+          <button
+            onClick={() => scrollToBottom('smooth')}
+            className="fixed bottom-24 right-4 w-10 h-10 rounded-full bg-emerald-400/70 backdrop-blur-sm text-black border-2 border-emerald-300/50 shadow-lg flex items-center justify-center z-10 active:scale-90 transition-transform"
+          >
+            ↓
+          </button>
+        )}
+
+        <div className="px-4 py-3 border-t border-white/10 flex-shrink-0 bg-zinc-700/50">
           <div className="flex gap-2">
             <input
               value={text}
