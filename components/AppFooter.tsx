@@ -34,8 +34,8 @@ export default function AppFooter() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-      <div className="w-full max-w-[460px] bg-zinc-900/95 backdrop-blur-lg border-t border-white/10 px-4 py-1.5 flex items-center justify-between">
-        <Link href="/explore" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/explore' ? 'text-white' : 'text-white/40'}`}>
+      <div className="w-full max-w-[460px] bg-zinc-700/50 backdrop-blur-lg border-t border-white/15 px-4 py-1.5 flex items-center justify-between">
+        <Link href="/explore" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/explore' ? 'text-white' : 'text-white/50'}`}>
           🔍
         </Link>
 
@@ -76,7 +76,7 @@ export default function AppFooter() {
                 </svg>
               </div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-6 h-6 rounded-full bg-emerald-400/30 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                <div className="w-6 h-6 rounded-full bg-emerald-400/40 backdrop-blur-sm flex items-center justify-center shadow-lg">
                   <span className="text-white text-lg font-bold leading-none">+</span>
                 </div>
               </div>
@@ -85,7 +85,7 @@ export default function AppFooter() {
         </label>
 
         {handle ? (
-          <Link href={`/${handle}`} className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === `/${handle}` ? 'text-white' : 'text-white/40'}`}>
+          <Link href={`/${handle}`} className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === `/${handle}` ? 'text-white' : 'text-white/50'}`}>
             👤
           </Link>
         ) : (
