@@ -39,6 +39,19 @@ function ChatContent() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
+  const scrollToBottom = () => {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  const sortMessages = (msgs: Message[]) => {
+    return [...msgs].sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime()
+      const timeB = new Date(b.createdAt).getTime()
+      if (timeA !== timeB) return timeA - timeB
+      return a.id.localeCompare(b.id)
+    })
+  }
+
   const loadMessages = useCallback(async (userId: string, receiverId?: string) => {
     if (!receiverId) return
 
@@ -54,9 +67,9 @@ function ChatContent() {
         (msg.senderId === receiverId && msg.receiverId === userId)
     )
 
-    setMessages(filtered)
+    setMessages(sortMessages(filtered))
     setLoading(false)
-    setTimeout(() => bottomRef.current?.scrollIntoView(), 100)
+    scrollToBottom()
   }, [])
 
   useEffect(() => {
@@ -80,6 +93,38 @@ function ChatContent() {
     })
   }, [handle, loadMessages, router])
 
+  useEffect(() => {
+    if (!user || !receiver) return
+
+    const channel = supabase
+      .channel('messages-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'Message',
+          filter: `receiverId=eq.${user.id}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as Message
+
+          if (newMessage.senderId === receiver.userId) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMessage.id)) return prev
+              return sortMessages([...prev, newMessage])
+            })
+            scrollToBottom()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, receiver])
+
   const sendMessage = async () => {
     if (!text.trim() || !user || !receiver) return
 
@@ -91,7 +136,6 @@ function ChatContent() {
       createdAt: new Date().toISOString(),
     }
 
-    setMessages((prev) => [...prev, newMessage])
     setText('')
 
     await supabase.from('Message').insert({
@@ -102,7 +146,7 @@ function ChatContent() {
       createdAt: newMessage.createdAt,
     })
 
-    setTimeout(() => bottomRef.current?.scrollIntoView(), 100)
+    await loadMessages(user.id, receiver.userId)
   }
 
   if (loading) return null
@@ -128,8 +172,13 @@ function ChatContent() {
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {messages.map((message) => {
             const isMine = message.senderId === user?.id
+            const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+
             return (
-              <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div key={message.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
                   isMine
                     ? 'bg-emerald-400 text-black rounded-br-sm'
@@ -137,6 +186,9 @@ function ChatContent() {
                 }`}>
                   <p className="text-sm">{message.text}</p>
                 </div>
+                <p className="text-[10px] mt-1 px-1 text-white/40">
+                  {time}
+                </p>
               </div>
             )
           })}
