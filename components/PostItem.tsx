@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const FanGallery = dynamic(() => import('@/components/FanGallery'), { ssr: false });
@@ -22,7 +21,7 @@ interface Post {
 
 export default function PostItem({ post }: { post: Post }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,14 +30,9 @@ export default function PostItem({ post }: { post: Post }) {
       const viewportHeight = window.innerHeight;
       const center = viewportHeight * 0.45;
       const distance = Math.abs(rect.top + rect.height / 2 - center);
-      const maxDistance = viewportHeight * 0.6;
+      const maxDistance = viewportHeight * 0.5;
       
-      if (distance < maxDistance) {
-        const normalized = 1 - distance / maxDistance;
-        setScale(1 + normalized * 0.03);
-      } else {
-        setScale(1);
-      }
+      setIsInView(distance < maxDistance);
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -47,16 +41,8 @@ export default function PostItem({ post }: { post: Post }) {
   }, []);
 
   return (
-    <div className="overflow-hidden">
-      <motion.div
-        ref={ref}
-        animate={{ scale }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        className="border-b border-white/5 pb-4 px-4"
-        style={{ transformOrigin: 'center center' }}
-      >
-        <FanGallery photos={post.media}/>
-      </motion.div>
+    <div ref={ref}>
+      <FanGallery photos={post.media} isInView={isInView} />
     </div>
   );
 }

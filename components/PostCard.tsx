@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-
-const FanGallery = dynamic(() => import('@/components/FanGallery'), { ssr: false });
+import PostItem from '@/components/PostItem';
 
 interface Media {
   id: string;
@@ -86,7 +85,7 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       )}
 
-      <FanGallery photos={post.media} />
+      <PostItem post={post} />
 
       <div className="px-4 py-3 flex items-center gap-5 border-t border-white/5">
         <button
