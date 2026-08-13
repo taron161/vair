@@ -12,6 +12,7 @@ interface CommentWithProfile {
   text: string;
   createdAt: string;
   handle?: string;
+  avatarUrl?: string;
 }
 
 interface CommentsModalProps {
@@ -28,6 +29,13 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const loadComments = async () => {
       const { data: comments } = await supabase
         .from('Comment')
@@ -36,17 +44,17 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
         .order('createdAt', { ascending: true });
 
       if (comments) {
-        const commentsWithHandles = await Promise.all(
+        const commentsWithProfiles = await Promise.all(
           comments.map(async (comment) => {
             const { data: profile } = await supabase
               .from('Profile')
-              .select('handle')
+              .select('handle, avatarUrl')
               .eq('userId', comment.userId)
               .single();
-            return { ...comment, handle: profile?.handle };
+            return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl };
           })
         );
-        setComments(commentsWithHandles);
+        setComments(commentsWithProfiles);
       }
     };
 
@@ -85,17 +93,17 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
       .order('createdAt', { ascending: true });
 
     if (comments) {
-      const commentsWithHandles = await Promise.all(
+      const commentsWithProfiles = await Promise.all(
         comments.map(async (comment) => {
           const { data: profile } = await supabase
             .from('Profile')
-            .select('handle')
+            .select('handle, avatarUrl')
             .eq('userId', comment.userId)
             .single();
-          return { ...comment, handle: profile?.handle };
+          return { ...comment, handle: profile?.handle, avatarUrl: profile?.avatarUrl };
         })
       );
-      setComments(commentsWithHandles);
+      setComments(commentsWithProfiles);
     }
 
     setText('');
@@ -134,8 +142,12 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
               comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
                   <Link href={`/${comment.handle || ''}`} onClick={onClose}>
-                    <div className="w-8 h-8 rounded-full bg-emerald-400/30 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {comment.userId.slice(0, 1).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {comment.avatarUrl ? (
+                        <img src={comment.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        comment.userId.slice(0, 1).toUpperCase()
+                      )}
                     </div>
                   </Link>
                   <div className="flex-1">

@@ -1,21 +1,42 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 interface AppHeaderProps {
   email?: string;
 }
 
 export default function AppHeader({ email }: AppHeaderProps) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('Profile')
+          .select('avatarUrl')
+          .eq('userId', user.id)
+          .single();
+        if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
+      }
+    });
+  }, []);
+
   return (
     <header className="px-4 py-3 border-b border-white/15 bg-zinc-700/50 flex justify-between items-center flex-shrink-0">
       <Link href="/" className="text-white text-xl font-bold">VAIR</Link>
       
       <Link
         href="/profile"
-        className="w-8 h-8 rounded-full bg-emerald-400/40 flex items-center justify-center text-white text-sm font-medium hover:bg-emerald-400/60 transition-colors"
+        className="w-8 h-8 rounded-full overflow-hidden bg-emerald-400/40 flex items-center justify-center text-white text-sm font-medium hover:bg-emerald-400/60 transition-colors"
       >
-        {email?.charAt(0).toUpperCase() || '?'}
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
+        ) : (
+          email?.charAt(0).toUpperCase() || '?'
+        )}
       </Link>
     </header>
   );

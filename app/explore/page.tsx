@@ -19,6 +19,7 @@ interface Profile {
   userId: string
   handle: string
   displayName?: string | null
+  avatarUrl?: string | null
 }
 
 function ExploreContent() {
@@ -60,7 +61,6 @@ function ExploreContent() {
       <AppHeader email={user?.email} />
 
       <div className="flex-1 overflow-y-auto pb-24 pt-4">
-        {/* Строка поиска */}
         <div className="px-4 mb-4">
           <input
             type="text"
@@ -78,8 +78,12 @@ function ExploreContent() {
               href={`/${profile.handle}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5"
             >
-              <div className="w-10 h-10 rounded-full bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                {profile.userId.slice(0, 1).toUpperCase()}
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                {profile.avatarUrl ? (
+                  <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  profile.userId.slice(0, 1).toUpperCase()
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-medium truncate">
