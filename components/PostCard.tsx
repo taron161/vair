@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import PostItem from '@/components/PostItem';
+import CommentsModal from '@/components/CommentsModal';
 import { supabase } from '@/lib/supabase';
 
 interface Media {
@@ -31,8 +32,10 @@ interface Like {
 export default function PostCard({ post, userId }: PostCardProps) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [expandedTags, setExpandedTags] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   const description = post.caption?.split('\n').filter(line => !line.trim().startsWith('#')).join('\n') || '';
   const hashtags = post.caption?.split(/\s+/).filter(word => word.startsWith('#')) || [];
@@ -51,7 +54,16 @@ export default function PostCard({ post, userId }: PostCardProps) {
       setLiked(likes?.some((l: Like) => l.userId === currentUserId) || false);
     };
 
+    const loadCommentsCount = async () => {
+      const { count } = await supabase
+        .from('Comment')
+        .select('*', { count: 'exact', head: true })
+        .eq('postId', post.id);
+      setCommentsCount(count || 0);
+    };
+
     loadLikes();
+    loadCommentsCount();
   }, [post.id]);
 
   const toggleLike = async () => {
@@ -60,12 +72,10 @@ export default function PostCard({ post, userId }: PostCardProps) {
 
     if (!currentUserId) return;
 
-    // Оптимистичное обновление
     const newLiked = !liked;
     setLiked(newLiked);
     setLikesCount((c) => (newLiked ? c + 1 : Math.max(0, c - 1)));
 
-    // Синхронизация с БД в фоне
     if (newLiked) {
       const { error } = await supabase.from('Like').insert({
         id: crypto.randomUUID(),
@@ -74,7 +84,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
         createdAt: new Date().toISOString(),
       });
       if (error) {
-        // Откатываем при ошибке
         console.error('Insert like error:', error);
         setLiked(false);
         setLikesCount((c) => Math.max(0, c - 1));
@@ -162,13 +171,25 @@ export default function PostCard({ post, userId }: PostCardProps) {
           <span>{liked ? '❤️' : '🤍'}</span>
           <span className="text-sm">{likesCount}</span>
         </button>
-        <button className="text-lg text-white/50 hover:text-blue-400 transition-colors">
-          💬
+        <button
+          onClick={() => setShowComments(true)}
+          className="flex items-center gap-1.5 text-lg text-white/50 hover:text-blue-400 transition-colors"
+        >
+          <span>💬</span>
+          <span className="text-sm">{commentsCount}</span>
         </button>
         <button className="text-lg text-white/50 hover:text-emerald-400 transition-colors">
           🔄
         </button>
       </div>
+
+      {showComments && (
+        <CommentsModal
+          postId={post.id}
+          onClose={() => setShowComments(false)}
+          onCommentAdded={() => setCommentsCount((c) => c + 1)}
+        />
+      )}
     </div>
   );
 }
