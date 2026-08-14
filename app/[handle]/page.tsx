@@ -23,6 +23,7 @@ interface Post {
   caption: string | null
   createdAt: string
   media: Media[]
+  userId?: string
 }
 
 export default async function UserProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -64,7 +65,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ ha
             <p className="text-white/50 text-sm">Нет постов</p>
           </div>
         ) : (
-          <PostListClient posts={postsWithMedia} userId="" />
+          <PostListClient posts={postsWithMedia} userId={profile.userId} />
         )}
       </div>
       <AppFooter />

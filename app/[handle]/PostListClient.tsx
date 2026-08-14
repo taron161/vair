@@ -14,6 +14,7 @@ interface Post {
   caption: string | null;
   createdAt: string;
   media: Media[];
+  userId?: string;
 }
 
 interface PostListClientProps {
