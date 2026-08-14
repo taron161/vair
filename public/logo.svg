@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 120">
+  <!-- Две большие карточки веером, симметрично -->
+  <rect x="25" y="15" width="45" height="80" rx="6" fill="#18181b" transform="rotate(-8, 45, 55)"/>
+  <rect x="70" y="15" width="45" height="80" rx="6" fill="#18181b" transform="rotate(8, 95, 55)"/>
+  
+  <!-- Веер белый -->
+  <path d="M70 62 L35 25 Q70 18 105 25 Z" fill="none" stroke="#ffffff" stroke-width="1" stroke-linejoin="round" opacity="0.6"/>
+  
+  <!-- Средние складки белые -->
+  <path d="M70 62 L60 24" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+  <path d="M70 62 L80 24" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Буква V изумрудная -->
+  <path d="M70 64 L48 22" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+  <path d="M70 64 L92 22" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Надпись VAIR изумрудная -->
+  <text x="70" y="90" fill="#34d399" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="4" text-anchor="middle">VAIR</text>
+</svg>

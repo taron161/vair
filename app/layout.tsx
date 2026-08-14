@@ -14,6 +14,17 @@ const notoSans = Noto_Sans({
 export const metadata: Metadata = {
   title: 'VAIR',
   description: 'Фото в формате веера',
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/logo-96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: { url: '/logo-180.png', sizes: '180x180', type: 'image/png' },
+  },
 }
 
 export default function RootLayout({
