@@ -147,9 +147,19 @@ export default function PostCard({ post, userId }: PostCardProps) {
   };
 
   const handleSaveEdit = async () => {
+    // Разделяем описание и теги
+    const words = editCaption.split(/\s+/);
+    const tags = words.filter(w => w.startsWith('#'));
+    const descWords = words.filter(w => !w.startsWith('#'));
+    const newDescription = descWords.join(' ');
+    const newTags = tags.join(' ');
+
+    // Форматируем: описание + новая строка + теги
+    const fullCaption = [newDescription, newTags].filter(Boolean).join('\n');
+
     await supabase
       .from('Post')
-      .update({ caption: editCaption || null, updatedAt: new Date().toISOString() })
+      .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
       .eq('id', post.id);
 
     setIsEditing(false);
