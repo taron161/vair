@@ -10,6 +10,7 @@ import MessageBubble from '@/components/chat/MessageBubble'
 import DateDivider from '@/components/chat/DateDivider'
 import ChatHeader from '@/components/chat/ChatHeader'
 import ChatInput from '@/components/chat/ChatInput'
+import ScrollDownButton from '@/components/chat/ScrollDownButton'
 
 interface Message {
   id: string
@@ -205,14 +206,7 @@ function ChatContent() {
           <div ref={bottomRef} />
         </div>
 
-        {showScrollDown && (
-          <button
-            onClick={() => scrollToBottom('smooth')}
-            className="fixed bottom-24 right-4 w-10 h-10 rounded-full bg-emerald-400/70 backdrop-blur-sm text-black border-2 border-emerald-300/50 shadow-lg flex items-center justify-center z-10 active:scale-90 transition-transform"
-          >
-            ↓
-          </button>
-        )}
+        {showScrollDown && <ScrollDownButton onClick={() => scrollToBottom('smooth')} />}
 
         <ChatInput value={text} onChange={(e) => setText(e.target.value)} onSend={sendMessage} />
       </div>

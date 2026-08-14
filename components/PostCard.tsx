@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import PostItem from '@/components/PostItem';
 import CommentsModal from '@/components/CommentsModal';
+import PostHeader from '@/components/post/PostHeader';
+import PostDescription from '@/components/post/PostDescription';
+import PostMenu from '@/components/post/PostMenu';
+import PostActions from '@/components/post/PostActions';
+import DeleteConfirmModal from '@/components/post/DeleteConfirmModal';
 import { supabase } from '@/lib/supabase';
 
 interface Media {
@@ -39,23 +44,12 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
   const [authorName, setAuthorName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const description = post.caption?.split('\n').filter(line => !line.trim().startsWith('#')).join('\n') || '';
   const hashtags = post.caption?.split(/\s+/).filter(word => word.startsWith('#')) || [];
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -122,8 +116,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Удалить пост?')) return;
-
     setIsDeleting(true);
 
     for (const media of post.media) {
@@ -140,7 +132,7 @@ export default function PostCard({ post, userId }: PostCardProps) {
     await supabase.from('Post').delete().eq('id', post.id);
 
     setIsDeleting(false);
-    setMenuOpen(false);
+    setShowDeleteConfirm(false);
     window.location.reload();
   };
 
@@ -170,120 +162,85 @@ export default function PostCard({ post, userId }: PostCardProps) {
     <div className="rounded-2xl bg-zinc-800/30 border border-white/5 overflow-hidden">
       <div className="px-4 pt-3 pb-2 border-b-2 border-emerald-400/30 bg-white/[0.02]">
         <div className="flex gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 border-2 border-emerald-400/50 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {authorAvatar ? (
-              <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
-            ) : (
-              authorName?.charAt(0).toUpperCase() || '?'
-            )}
+          {/* Кружок и дата под ним */}
+          <div className="flex flex-col items-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 border-2 border-emerald-400/50 flex items-center justify-center text-white text-sm font-bold">
+              {authorAvatar ? (
+                <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                authorName?.charAt(0).toUpperCase() || '?'
+              )}
+            </div>
+            <p className="text-white/30 text-[9px] mt-1 text-center leading-tight">{dateStr}</p>
+            <p className="text-white/20 text-[8px] text-center leading-tight">{timeStr}</p>
           </div>
 
+          {/* Имя и описание */}
           <div className="flex-1 min-w-0">
             <p className="text-white/50 text-xs mb-1">
               {authorName || 'Пользователь'}
             </p>
 
             {description && (
-              <div
-                onClick={() => setExpanded(!expanded)}
-                className="cursor-pointer select-none transition-all duration-300 ease-in-out"
-                style={{
-                  maxHeight: expanded ? '500px' : hashtags.length > 0 ? '90px' : '60px',
-                  overflow: 'hidden',
-                }}
-              >
-                <p className="text-white/90 text-sm leading-relaxed mb-1">
-                  {expanded ? description : truncatedDesc}
-                </p>
-
-                {hashtags.length > 0 && (
-                  <p className="text-emerald-300 text-xs leading-relaxed break-words mb-1">
-                    {(expanded ? hashtags : visibleTags).map((tag, i) => (
-                      <span key={i} className="mr-1.5">
-                        {tag}
-                      </span>
-                    ))}
-                    {!expanded && hiddenTagsCount > 0 && (
-                      <span className="text-white/50">... +{hiddenTagsCount}</span>
-                    )}
-                  </p>
-                )}
-              </div>
+              <PostDescription
+                description={description}
+                hashtags={hashtags}
+                expanded={expanded}
+                truncatedDesc={truncatedDesc}
+                visibleTags={visibleTags}
+                hiddenTagsCount={hiddenTagsCount}
+                onToggle={() => setExpanded(!expanded)}
+              />
             )}
-
-            <div className="mt-1">
-              <p className="text-white/40 text-[11px]">{dateStr}</p>
-              <p className="text-white/30 text-[10px]">{timeStr}</p>
-            </div>
           </div>
 
           {currentUserId && currentUserId === post.userId && (
-            <div className="relative flex-shrink-0" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <span className="text-lg leading-none">⋯</span>
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-10 w-44 bg-zinc-800 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      window.dispatchEvent(new CustomEvent('edit-post', { 
-                        detail: { 
-                          postId: post.id,
-                          caption: post.caption,
-                          media: post.media
-                        } 
-                      }));
-                    }}
-                    className="block w-full text-left px-4 py-3 text-white/80 text-sm hover:bg-white/10 transition-colors border-b border-white/5 cursor-pointer"
-                  >
-                    ✏️ Редактировать
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="block w-full text-left px-4 py-3 text-red-400 text-sm hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    {isDeleting ? 'Удаление...' : '🗑️ Удалить'}
-                  </button>
-                </div>
-              )}
-            </div>
+            <PostMenu
+              menuOpen={menuOpen}
+              onToggle={() => setMenuOpen(!menuOpen)}
+              onEdit={() => {
+                setMenuOpen(false);
+                window.dispatchEvent(new CustomEvent('edit-post', { 
+                  detail: { 
+                    postId: post.id,
+                    caption: post.caption,
+                    media: post.media
+                  } 
+                }));
+              }}
+              onDelete={() => {
+                setMenuOpen(false);
+                setShowDeleteConfirm(true);
+              }}
+              isDeleting={isDeleting}
+            />
           )}
         </div>
       </div>
 
       <PostItem post={post} />
 
-      <div className="px-4 py-3 flex items-center gap-5 border-t-2 border-emerald-400/30">
-        <button
-          onClick={toggleLike}
-          className={`flex items-center gap-1.5 text-lg transition-transform active:scale-90 cursor-pointer ${liked ? 'text-red-400' : 'text-white/50 hover:text-white/80'}`}
-        >
-          <span>{liked ? '❤️' : '🤍'}</span>
-          <span className="text-sm">{likesCount}</span>
-        </button>
-        <button
-          onClick={() => setShowComments(true)}
-          className="flex items-center gap-1.5 text-lg text-white/50 hover:text-blue-400 transition-colors cursor-pointer"
-        >
-          <span>💬</span>
-          <span className="text-sm">{commentsCount}</span>
-        </button>
-        <button className="text-lg text-white/50 hover:text-emerald-400 transition-colors cursor-pointer">
-          🔄
-        </button>
-      </div>
+      <PostActions
+        liked={liked}
+        likesCount={likesCount}
+        commentsCount={commentsCount}
+        onToggleLike={toggleLike}
+        onShowComments={() => setShowComments(true)}
+      />
 
       {showComments && (
         <CommentsModal
           postId={post.id}
           onClose={() => setShowComments(false)}
           onCommentAdded={() => setCommentsCount((c) => c + 1)}
+        />
+      )}
+
+      {showDeleteConfirm && (
+        <DeleteConfirmModal
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          isDeleting={isDeleting}
         />
       )}
     </div>

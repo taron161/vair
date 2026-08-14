@@ -1,12 +1,12 @@
 'use client';
 
 interface Message {
-  id: string
-  senderId: string
-  receiverId: string
-  text: string
-  createdAt: string
-  isRead: boolean
+  id: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  createdAt: string;
+  isRead: boolean;
 }
 
 interface MessageBubbleProps {
@@ -18,7 +18,7 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
   const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 
   return (
     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
@@ -51,5 +51,5 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useUploadState } from '@/hooks/useUploadState';
 
 interface UploadContextType {
   uploading: boolean;
@@ -19,18 +20,10 @@ const UploadContext = createContext<UploadContextType>({
 });
 
 export function UploadProvider({ children }: { children: ReactNode }) {
-  const [uploading, setUploading] = useState(false);
-  const [editorFiles, setEditorFiles] = useState<File[] | null>(null);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !files.length) return;
-    setEditorFiles(Array.from(files));
-    e.target.value = '';
-  };
+  const uploadState = useUploadState();
 
   return (
-    <UploadContext.Provider value={{ uploading, setUploading, editorFiles, setEditorFiles, handleFileSelect }}>
+    <UploadContext.Provider value={uploadState}>
       {children}
     </UploadContext.Provider>
   );

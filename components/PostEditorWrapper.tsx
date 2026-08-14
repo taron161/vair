@@ -5,6 +5,7 @@ import { useUpload } from '@/lib/UploadContext';
 import PostEditor from '@/components/PostEditor';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
+import { useImageCompression } from '@/hooks/useImageCompression';
 
 interface EditData {
   postId: string;
@@ -16,6 +17,7 @@ export default function PostEditorWrapper() {
   const { editorFiles, setEditorFiles, setUploading, uploading } = useUpload();
   const router = useRouter();
   const [editData, setEditData] = useState<EditData | null>(null);
+  const { compressImage } = useImageCompression();
 
   useEffect(() => {
     const handleEdit = (e: Event) => {
@@ -26,49 +28,6 @@ export default function PostEditorWrapper() {
     window.addEventListener('edit-post', handleEdit);
     return () => window.removeEventListener('edit-post', handleEdit);
   }, []);
-
-  const compressImage = async (file: File, maxWidth: number = 1200): Promise<File> => {
-    return new Promise((resolve) => {
-      const img = new window.Image();
-      img.src = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(img.src);
-
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(file);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            resolve(file);
-            return;
-          }
-          const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          resolve(compressedFile);
-        }, 'image/jpeg', 0.8);
-      };
-      img.onerror = () => resolve(file);
-    });
-  };
 
   const handleCreateSave = async (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => {
     setUploading(true);
@@ -136,7 +95,6 @@ export default function PostEditorWrapper() {
       .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
       .eq('id', editData.postId);
 
-    // Минимальная задержка для показа загрузчика
     await new Promise((r) => setTimeout(r, 500));
 
     setUploading(false);

@@ -20,11 +20,11 @@ export default function ChatInput({ value, onChange, onSend }: ChatInputProps) {
         <button
           onClick={onSend}
           disabled={!value.trim()}
-          className="w-10 h-10 rounded-xl bg-emerald-400 text-black font-semibold flex items-center justify-center disabled:opacity-30"
+          className="w-10 h-10 rounded-xl bg-emerald-400 text-black font-semibold flex items-center justify-center disabled:opacity-30 cursor-pointer"
         >
           ➤
         </button>
       </div>
     </div>
-  )
+  );
 }

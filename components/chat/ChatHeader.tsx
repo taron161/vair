@@ -1,10 +1,10 @@
 'use client';
 
 interface Receiver {
-  userId: string
-  handle: string
-  displayName?: string | null
-  avatarUrl?: string | null
+  userId: string;
+  handle: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 }
 
 interface ChatHeaderProps {
@@ -26,5 +26,5 @@ export default function ChatHeader({ receiver, handle }: ChatHeaderProps) {
         {receiver?.displayName || `@${handle}`}
       </p>
     </div>
-  )
+  );
 }

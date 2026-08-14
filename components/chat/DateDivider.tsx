@@ -1,28 +1,24 @@
 'use client';
 
-interface DateDividerProps {
-  dateStr: string;
-}
-
-export default function DateDivider({ dateStr }: DateDividerProps) {
+export default function DateDivider({ dateStr }: { dateStr: string }) {
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(today.getDate() - 1)
-    const dayBefore = new Date(today)
-    dayBefore.setDate(today.getDate() - 2)
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const dayBefore = new Date(today);
+    dayBefore.setDate(today.getDate() - 2);
 
-    if (date.toDateString() === today.toDateString()) return 'Сегодня'
-    if (date.toDateString() === yesterday.toDateString()) return 'Вчера'
-    if (date.toDateString() === dayBefore.toDateString()) return 'Позавчера'
+    if (date.toDateString() === today.toDateString()) return 'Сегодня';
+    if (date.toDateString() === yesterday.toDateString()) return 'Вчера';
+    if (date.toDateString() === dayBefore.toDateString()) return 'Позавчера';
     
     return date.toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
-    })
-  }
+    });
+  };
 
   return (
     <div className="flex justify-center my-4">
@@ -30,5 +26,5 @@ export default function DateDivider({ dateStr }: DateDividerProps) {
         {formatDate(dateStr)}
       </span>
     </div>
-  )
+  );
 }

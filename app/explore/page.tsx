@@ -7,7 +7,8 @@ import { UploadProvider } from '@/lib/UploadContext'
 import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
-import Link from 'next/link'
+import SearchBar from '@/components/explore/SearchBar'
+import UsersList from '@/components/explore/UsersList'
 
 interface UserData {
   id: string
@@ -61,53 +62,8 @@ function ExploreContent() {
       <AppHeader email={user?.email} />
 
       <div className="flex-1 overflow-y-auto pb-24 pt-4">
-        <div className="px-4 mb-4">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Поиск пользователей..."
-            className="w-full bg-white/5 text-white text-sm rounded-xl px-4 py-2.5 placeholder-white/30 focus:outline-none focus:bg-white/10"
-          />
-        </div>
-
-        <div className="space-y-0">
-          {profiles.map((profile) => (
-            <div
-              key={profile.id}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5"
-            >
-              <Link href={`/${profile.handle}`} className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                  {profile.avatarUrl ? (
-                    <img src={profile.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    profile.userId.slice(0, 1).toUpperCase()
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">
-                    {profile.displayName || `@${profile.handle}`}
-                  </p>
-                  {profile.displayName && (
-                    <p className="text-white/40 text-xs truncate">@{profile.handle}</p>
-                  )}
-                </div>
-              </Link>
-
-              <button
-                onClick={() => router.push(`/messages/${profile.handle}`)}
-                className="px-4 py-1.5 rounded-xl bg-emerald-400/20 text-emerald-300 text-xs font-medium hover:bg-emerald-400/30 transition-colors flex-shrink-0"
-              >
-                Написать
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {profiles.length === 0 && (
-          <p className="text-white/40 text-sm text-center mt-8">Пока никого нет</p>
-        )}
+        <SearchBar value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <UsersList profiles={profiles} />
       </div>
 
       <AppFooter />
