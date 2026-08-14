@@ -39,8 +39,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
   const [authorName, setAuthorName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editCaption, setEditCaption] = useState(post.caption || '');
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -146,27 +144,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
     window.location.reload();
   };
 
-  const handleSaveEdit = async () => {
-    // Разделяем описание и теги
-    const words = editCaption.split(/\s+/);
-    const tags = words.filter(w => w.startsWith('#'));
-    const descWords = words.filter(w => !w.startsWith('#'));
-    const newDescription = descWords.join(' ');
-    const newTags = tags.join(' ');
-
-    // Форматируем: описание + новая строка + теги
-    const fullCaption = [newDescription, newTags].filter(Boolean).join('\n');
-
-    await supabase
-      .from('Post')
-      .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
-      .eq('id', post.id);
-
-    setIsEditing(false);
-    setMenuOpen(false);
-    window.location.reload();
-  };
-
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     const truncated = text.slice(0, maxLength);
@@ -206,66 +183,38 @@ export default function PostCard({ post, userId }: PostCardProps) {
               {authorName || 'Пользователь'}
             </p>
 
-            {isEditing ? (
-              <div className="space-y-2">
-                <textarea
-                  value={editCaption}
-                  onChange={(e) => setEditCaption(e.target.value)}
-                  placeholder="Описание и #теги"
-                  rows={3}
-                  className="w-full bg-white/5 text-white text-sm rounded-xl px-3 py-2 resize-none focus:outline-none focus:bg-white/10"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSaveEdit}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-400 text-black text-sm font-semibold hover:bg-emerald-300 transition-colors cursor-pointer"
-                  >
-                    Сохранить
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-1.5 rounded-lg bg-white/10 text-white/70 text-sm hover:bg-white/20 transition-colors cursor-pointer"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {description && (
-                  <div
-                    onClick={() => setExpanded(!expanded)}
-                    className="cursor-pointer select-none transition-all duration-300 ease-in-out"
-                    style={{
-                      maxHeight: expanded ? '500px' : '60px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <p className="text-white/90 text-sm leading-relaxed mb-1">
-                      {expanded ? description : truncatedDesc}
-                    </p>
+            {description && (
+              <div
+                onClick={() => setExpanded(!expanded)}
+                className="cursor-pointer select-none transition-all duration-300 ease-in-out"
+                style={{
+                  maxHeight: expanded ? '500px' : hashtags.length > 0 ? '90px' : '60px',
+                  overflow: 'hidden',
+                }}
+              >
+                <p className="text-white/90 text-sm leading-relaxed mb-1">
+                  {expanded ? description : truncatedDesc}
+                </p>
 
-                    {hashtags.length > 0 && (
-                      <p className="text-emerald-300 text-xs leading-relaxed break-words mb-1">
-                        {(expanded ? hashtags : visibleTags).map((tag, i) => (
-                          <span key={i} className="mr-1.5">
-                            {tag}
-                          </span>
-                        ))}
-                        {!expanded && hiddenTagsCount > 0 && (
-                          <span className="text-white/50">... +{hiddenTagsCount}</span>
-                        )}
-                      </p>
+                {hashtags.length > 0 && (
+                  <p className="text-emerald-300 text-xs leading-relaxed break-words mb-1">
+                    {(expanded ? hashtags : visibleTags).map((tag, i) => (
+                      <span key={i} className="mr-1.5">
+                        {tag}
+                      </span>
+                    ))}
+                    {!expanded && hiddenTagsCount > 0 && (
+                      <span className="text-white/50">... +{hiddenTagsCount}</span>
                     )}
-                  </div>
+                  </p>
                 )}
-
-                <div className="mt-1">
-                  <p className="text-white/40 text-[11px]">{dateStr}</p>
-                  <p className="text-white/30 text-[10px]">{timeStr}</p>
-                </div>
-              </>
+              </div>
             )}
+
+            <div className="mt-1">
+              <p className="text-white/40 text-[11px]">{dateStr}</p>
+              <p className="text-white/30 text-[10px]">{timeStr}</p>
+            </div>
           </div>
 
           {currentUserId && currentUserId === post.userId && (
@@ -281,8 +230,14 @@ export default function PostCard({ post, userId }: PostCardProps) {
                 <div className="absolute right-0 top-10 w-44 bg-zinc-800 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50">
                   <button
                     onClick={() => {
-                      setIsEditing(true);
                       setMenuOpen(false);
+                      window.dispatchEvent(new CustomEvent('edit-post', { 
+                        detail: { 
+                          postId: post.id,
+                          caption: post.caption,
+                          media: post.media
+                        } 
+                      }));
                     }}
                     className="block w-full text-left px-4 py-3 text-white/80 text-sm hover:bg-white/10 transition-colors border-b border-white/5 cursor-pointer"
                   >

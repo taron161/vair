@@ -4,58 +4,82 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface MediaItem {
-  file: File;
+  file?: File;
   preview: string;
   type: 'image' | 'video';
+  url?: string;
 }
 
 interface PostEditorProps {
-  files: File[];
+  files?: File[];
   onSave: (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => void;
   onCancel: () => void;
   uploading?: boolean;
+  initialCaption?: string;
+  initialHashtags?: string;
+  editMode?: boolean;
+  editMedia?: { id: string; url: string; type: string; order: number }[];
 }
 
-export default function PostEditor({ files, onSave, onCancel, uploading = false }: PostEditorProps) {
-  const [media] = useState<MediaItem[]>(() =>
-    files.map((file) => ({
+export default function PostEditor({ 
+  files = [], 
+  onSave, 
+  onCancel, 
+  uploading = false, 
+  initialCaption = '', 
+  initialHashtags = '',
+  editMode = false,
+  editMedia = []
+}: PostEditorProps) {
+  const [media, setMedia] = useState<MediaItem[]>(() => {
+    if (editMode && editMedia.length > 0) {
+      return editMedia.map(item => ({
+        preview: item.url,
+        type: item.type === 'video' ? 'video' as const : 'image' as const,
+        url: item.url,
+      }));
+    }
+    return files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      type: file.type.startsWith('video') ? 'video' : 'image',
-    }))
-  );
+      type: file.type.startsWith('video') ? 'video' as const : 'image' as const,
+    }));
+  });
+
   const [coverIndex, setCoverIndex] = useState(0);
-  const [caption, setCaption] = useState('');
-  const [hashtags, setHashtags] = useState('');
+  const [caption, setCaption] = useState(initialCaption);
+  const [hashtags, setHashtags] = useState(initialHashtags);
 
   const handleSave = () => {
     if (uploading) return;
 
-    // Собираем теги из поля хештегов
+    // Форматируем теги
     const tagsFromField = hashtags
       .split(/[\s,;]+/)
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0)
       .map(tag => tag.startsWith('#') ? tag : `#${tag}`);
 
-    // Собираем теги из описания
     const tagsFromCaption = caption
       .split(/\s+/)
       .filter(word => word.startsWith('#'))
       .map(tag => tag.trim());
 
-    // Объединяем все теги
     const allTags = [...tagsFromField, ...tagsFromCaption]
       .filter((tag, index, arr) => arr.indexOf(tag) === index)
       .join(' ');
 
-    // Убираем теги из описания
     const cleanCaption = caption
       .split(/\s+/)
       .filter(word => !word.startsWith('#'))
       .join(' ');
 
-    const filesArray = media.map((m) => m.file);
+    if (editMode) {
+      onSave({ media: [], coverIndex, caption: cleanCaption, hashtags: allTags });
+      return;
+    }
+
+    const filesArray = media.map((m) => m.file).filter((f): f is File => !!f);
     onSave({ media: filesArray, coverIndex, caption: cleanCaption, hashtags: allTags });
   };
 
@@ -67,60 +91,82 @@ export default function PostEditor({ files, onSave, onCancel, uploading = false 
           <button onClick={onCancel} disabled={uploading} className="text-white/60 text-sm hover:text-white disabled:opacity-50 cursor-pointer">
             Отмена
           </button>
-          <h2 className="text-white font-semibold">Новый пост</h2>
+          <h2 className="text-white font-semibold">{editMode ? 'Редактировать пост' : 'Новый пост'}</h2>
           <button onClick={handleSave} disabled={uploading} className="text-emerald-400 text-sm font-semibold hover:text-emerald-300 disabled:opacity-50 cursor-pointer">
-            {uploading ? 'Загрузка...' : 'Сохранить'}
+            {uploading ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
 
         {/* Выбор обложки */}
-        <div className="px-4 py-3">
-          <p className="text-white/50 text-xs mb-2">Выберите обложку:</p>
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {media.map((item, index) => (
-              <motion.button
-                key={index}
-                onClick={() => setCoverIndex(index)}
-                disabled={uploading}
-                className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all cursor-pointer ${
-                  coverIndex === index ? 'border-emerald-400 scale-110' : 'border-white/10 opacity-60'
-                }`}
-                whileTap={{ scale: 0.95 }}
-              >
-                {item.type === 'video' ? (
-                  <video src={item.preview} className="w-full h-full object-cover" muted />
-                ) : (
-                  <img src={item.preview} className="w-full h-full object-cover" alt="" />
-                )}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-
-        {/* Превью веера */}
-        <div className="relative h-64 bg-zinc-800/50 mx-4 rounded-xl overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            {media.map((item, index) => {
-              const isCover = index === coverIndex;
-              const offset = (index - coverIndex) * 25;
-              return (
-                <motion.div
+        {!editMode && media.length > 0 && (
+          <div className="px-4 py-3">
+            <p className="text-white/50 text-xs mb-2">Выберите обложку:</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {media.map((item, index) => (
+                <motion.button
                   key={index}
-                  className="absolute w-20 h-32 rounded-lg overflow-hidden border-2 border-white/10"
-                  style={{ zIndex: isCover ? 10 : 1 }}
-                  animate={{ x: offset, rotate: isCover ? 0 : offset * 0.3, scale: isCover ? 1.15 : 0.8 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  onClick={() => setCoverIndex(index)}
+                  disabled={uploading}
+                  className={`relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all cursor-pointer ${
+                    coverIndex === index ? 'border-emerald-400 scale-110' : 'border-white/10 opacity-60'
+                  }`}
+                  whileTap={{ scale: 0.95 }}
                 >
                   {item.type === 'video' ? (
                     <video src={item.preview} className="w-full h-full object-cover" muted />
                   ) : (
                     <img src={item.preview} className="w-full h-full object-cover" alt="" />
                   )}
-                </motion.div>
-              );
-            })}
+                </motion.button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Превью в режиме редактирования */}
+        {editMode && media.length > 0 && (
+          <div className="px-4 py-3">
+            <p className="text-white/50 text-xs mb-2">Фото поста:</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {media.map((item, index) => (
+                <div key={index} className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-white/10">
+                  {item.type === 'video' ? (
+                    <video src={item.preview} className="w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={item.preview} className="w-full h-full object-cover" alt="" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Превью веера */}
+        {!editMode && media.length > 0 && (
+          <div className="relative h-64 bg-zinc-800/50 mx-4 rounded-xl overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center">
+              {media.map((item, index) => {
+                const isCover = index === coverIndex;
+                const offset = (index - coverIndex) * 25;
+                return (
+                  <motion.div
+                    key={index}
+                    className="absolute w-20 h-32 rounded-lg overflow-hidden border-2 border-white/10"
+                    style={{ zIndex: isCover ? 10 : 1 }}
+                    animate={{ x: offset, rotate: isCover ? 0 : offset * 0.3, scale: isCover ? 1.15 : 0.8 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  >
+                    {item.type === 'video' ? (
+                      <video src={item.preview} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={item.preview} className="w-full h-full object-cover" alt="" />
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Описание */}
         <div className="px-4 py-3">
@@ -147,7 +193,7 @@ export default function PostEditor({ files, onSave, onCancel, uploading = false 
           />
         </div>
 
-        {/* Загрузчик с полным логотипом */}
+        {/* Загрузчик */}
         {uploading && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
             <div className="relative w-24 h-20 mb-3">
@@ -182,7 +228,7 @@ export default function PostEditor({ files, onSave, onCancel, uploading = false 
                 <span className="text-[#34d399] text-xs font-bold tracking-[3px]">VAIR</span>
               </div>
             </div>
-            <p className="text-white/70 text-sm mt-2">Загружаем...</p>
+            <p className="text-white/70 text-sm mt-2">Сохраняем...</p>
           </div>
         )}
       </div>
