@@ -58,6 +58,31 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
     };
   }, [expandedId]);
 
+  useEffect(() => {
+    if (!expandedId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        const currentIndex = sortedPhotos.findIndex(p => p.id === expandedId);
+        if (currentIndex === -1) return;
+        const nextIndex = currentIndex > 0 ? currentIndex - 1 : sortedPhotos.length - 1;
+        setExpandedId(sortedPhotos[nextIndex].id);
+        setActiveId(sortedPhotos[nextIndex].id);
+      } else if (e.key === 'ArrowRight') {
+        const currentIndex = sortedPhotos.findIndex(p => p.id === expandedId);
+        if (currentIndex === -1) return;
+        const nextIndex = currentIndex < sortedPhotos.length - 1 ? currentIndex + 1 : 0;
+        setExpandedId(sortedPhotos[nextIndex].id);
+        setActiveId(sortedPhotos[nextIndex].id);
+      } else if (e.key === 'Escape') {
+        setExpandedId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedId, sortedPhotos]);
+
   const handleClick = (photo: Photo) => {
     if (sortedPhotos.length <= 1) {
       setExpandedId(expandedId === photo.id ? null : photo.id);
@@ -108,16 +133,14 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
     if (Math.abs(diffX) < 50) return;
 
     const currentIndex = sortedPhotos.findIndex(p => p.id === photoId);
-    
+
     if (currentIndex === -1) return;
 
     let nextIndex: number;
 
     if (diffX < 0) {
-      // Свайп влево — следующая
       nextIndex = currentIndex < sortedPhotos.length - 1 ? currentIndex + 1 : 0;
     } else {
-      // Свайп вправо — предыдущая
       nextIndex = currentIndex > 0 ? currentIndex - 1 : sortedPhotos.length - 1;
     }
 
@@ -197,10 +220,10 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
               transition={{ type: 'spring', stiffness: 200, damping: 25 }}
               onClick={() => handleClick(photo)}
             >
-              <div className={`w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 transition-all relative ${
+              <div className={`w-full h-full rounded-2xl overflow-hidden border transition-all relative ${
                 isVideo 
-                  ? 'border-purple-500/50 shadow-purple-500/30' 
-                  : 'border-emerald-400/30 shadow-emerald-400/10'
+                  ? 'border-purple-500/20' 
+                  : 'border-emerald-400/20'
               }`}>
                 {isVideo ? (
                   <video
@@ -255,7 +278,7 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
               {expandedPhoto.type === 'video' ? (
                 <video
                   src={expandedPhoto.url}
-                  className="w-full rounded-xl shadow-2xl"
+                  className="w-full rounded-xl"
                   style={{
                     aspectRatio: '260 / 370',
                     objectFit: 'cover',
@@ -268,7 +291,7 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
                 <img
                   src={expandedPhoto.url}
                   alt=""
-                  className="w-full rounded-xl shadow-2xl"
+                  className="w-full rounded-xl"
                   style={{
                     aspectRatio: '260 / 370',
                     objectFit: 'cover',

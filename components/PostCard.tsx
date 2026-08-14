@@ -18,6 +18,7 @@ interface Post {
   caption: string | null;
   createdAt: string;
   media: Media[];
+  userId?: string;
 }
 
 interface PostCardProps {
@@ -33,9 +34,10 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [commentsCount, setCommentsCount] = useState(0);
-  const [expandedDesc, setExpandedDesc] = useState(false);
-  const [expandedTags, setExpandedTags] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
+  const [authorName, setAuthorName] = useState<string | null>(null);
 
   const description = post.caption?.split('\n').filter(line => !line.trim().startsWith('#')).join('\n') || '';
   const hashtags = post.caption?.split(/\s+/).filter(word => word.startsWith('#')) || [];
@@ -62,8 +64,21 @@ export default function PostCard({ post, userId }: PostCardProps) {
       setCommentsCount(count || 0);
     };
 
+    const loadAuthor = async () => {
+      const { data: profile } = await supabase
+        .from('Profile')
+        .select('avatarUrl, displayName')
+        .eq('userId', post.userId)
+        .single();
+      if (profile) {
+        setAuthorAvatar(profile.avatarUrl);
+        setAuthorName(profile.displayName);
+      }
+    };
+
     loadLikes();
     loadCommentsCount();
+    loadAuthor();
   }, [post.id]);
 
   const toggleLike = async () => {
@@ -84,7 +99,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
         createdAt: new Date().toISOString(),
       });
       if (error) {
-        console.error('Insert like error:', error);
         setLiked(false);
         setLikesCount((c) => Math.max(0, c - 1));
       }
@@ -95,7 +109,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
         .eq('postId', post.id)
         .eq('userId', currentUserId);
       if (error) {
-        console.error('Delete like error:', error);
         setLiked(true);
         setLikesCount((c) => c + 1);
       }
@@ -113,60 +126,80 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const visibleTags = hashtags.slice(0, 5);
   const hiddenTagsCount = hashtags.length - 5;
 
+  const postDate = new Date(post.createdAt);
+  const dateStr = postDate.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const timeStr = postDate.toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
     <div className="rounded-2xl bg-zinc-800/30 border border-white/5 overflow-hidden">
-      {(description || hashtags.length > 0) && (
-        <div className="px-4 pt-2 pb-3 border-b border-white/5 bg-white/[0.02] space-y-1.5">
-          {description && (
-            <div
-              onClick={() => setExpandedDesc(!expandedDesc)}
-              className="bg-zinc-900/60 rounded-lg px-3 py-2 cursor-pointer select-none transition-all duration-300 ease-in-out"
-              style={{
-                maxHeight: expandedDesc ? '500px' : '70px',
-                overflow: 'hidden',
-              }}
-            >
-              <p className="text-white/90 text-sm font-medium leading-relaxed">
-                {expandedDesc ? description : truncatedDesc}
-              </p>
-            </div>
-          )}
+      {/* Блок с автором, описанием и тегами */}
+      <div className="px-4 pt-3 pb-2 border-b-2 border-emerald-400/30 bg-white/[0.02]">
+        <div className="flex gap-3">
+          {/* Кружок автора с изумрудным бордером */}
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 border-2 border-emerald-400/50 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+            {authorAvatar ? (
+              <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              authorName?.charAt(0).toUpperCase() || '?'
+            )}
+          </div>
 
-          {hashtags.length > 0 && (
-            <div
-              onClick={() => setExpandedTags(!expandedTags)}
-              className="pl-2 cursor-pointer select-none transition-all duration-300 ease-in-out"
-              style={{
-                maxHeight: expandedTags ? '500px' : '30px',
-                overflow: 'hidden',
-              }}
-            >
-              <div className="flex flex-wrap gap-0.5">
-                {(expandedTags ? hashtags : visibleTags).map((tag, i) => (
-                  <span
-                    key={i}
-                    className="text-emerald-300 text-[10px] px-1.5 py-0.5 rounded bg-zinc-900/60 leading-relaxed"
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {!expandedTags && hiddenTagsCount > 0 && (
-                  <span className="text-white/50 text-[10px] px-1.5 py-0.5 rounded bg-zinc-900/60 leading-relaxed">
-                    ... +{hiddenTagsCount}
-                  </span>
+          {/* Описание, теги, дата и время */}
+          <div className="flex-1 min-w-0">
+            <p className="text-white/50 text-xs mb-1">
+              {authorName || 'Пользователь'}
+            </p>
+            
+            {description && (
+              <div
+                onClick={() => setExpanded(!expanded)}
+                className="cursor-pointer select-none transition-all duration-300 ease-in-out"
+                style={{
+                  maxHeight: expanded ? '500px' : '60px',
+                  overflow: 'hidden',
+                }}
+              >
+                <p className="text-white/90 text-sm leading-relaxed mb-1">
+                  {expanded ? description : truncatedDesc}
+                </p>
+                
+                {hashtags.length > 0 && (
+                  <p className="text-emerald-300 text-xs leading-relaxed break-words mb-1">
+                    {(expanded ? hashtags : visibleTags).map((tag, i) => (
+                      <span key={i} className="mr-1.5">
+                        {tag}
+                      </span>
+                    ))}
+                    {!expanded && hiddenTagsCount > 0 && (
+                      <span className="text-white/50">... +{hiddenTagsCount}</span>
+                    )}
+                  </p>
                 )}
               </div>
+            )}
+
+            <div className="mt-1">
+              <p className="text-white/40 text-[11px]">{dateStr}</p>
+              <p className="text-white/30 text-[10px]">{timeStr}</p>
             </div>
-          )}
+          </div>
         </div>
-      )}
+      </div>
 
       <PostItem post={post} />
 
-      <div className="px-4 py-3 flex items-center gap-5 border-t border-white/5">
+      {/* Действия */}
+      <div className="px-4 py-3 flex items-center gap-5 border-t-2 border-emerald-400/30">
         <button
           onClick={toggleLike}
-          className={`flex items-center gap-1.5 text-lg transition-transform active:scale-90 ${liked ? 'text-red-400' : 'text-white/50'}`}
+          className={`flex items-center gap-1.5 text-lg transition-transform active:scale-90 ${liked ? 'text-red-400' : 'text-white/50 hover:text-white/80'}`}
         >
           <span>{liked ? '❤️' : '🤍'}</span>
           <span className="text-sm">{likesCount}</span>
