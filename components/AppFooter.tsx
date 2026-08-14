@@ -9,7 +9,7 @@ import { useUpload } from '@/lib/UploadContext';
 export default function AppFooter() {
   const pathname = usePathname();
   const [handle, setHandle] = useState<string | null>(null);
-  const { uploading, setEditorFiles } = useUpload();
+  const { uploading, handleFileSelect } = useUpload();
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -23,13 +23,6 @@ export default function AppFooter() {
 
     return () => cancelAnimationFrame(frame)
   }, [])
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !files.length) return;
-    setEditorFiles(Array.from(files));
-    e.target.value = '';
-  };
 
   if (pathname === '/login') return null;
 
