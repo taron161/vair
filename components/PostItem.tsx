@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useInView } from '@/hooks/useInView';
 
 const FanGallery = dynamic(() => import('@/components/FanGallery'), { ssr: false });
 
@@ -19,26 +19,12 @@ interface Post {
   media: Media[];
 }
 
-export default function PostItem({ post }: { post: Post }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isInView, setIsInView] = useState(false);
+interface PostItemProps {
+  post: Post;
+}
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!ref.current) return;
-      const rect = ref.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const center = viewportHeight * 0.45;
-      const distance = Math.abs(rect.top + rect.height / 2 - center);
-      const maxDistance = viewportHeight * 0.5;
-      
-      setIsInView(distance < maxDistance);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+export default function PostItem({ post }: PostItemProps) {
+  const { ref, isInView } = useInView();
 
   return (
     <div ref={ref}>

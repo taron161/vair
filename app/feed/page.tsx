@@ -7,6 +7,7 @@ import { UploadProvider } from '@/lib/UploadContext'
 import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
+import FeedPlaceholder from '@/components/feed/FeedPlaceholder'
 
 interface UserData {
   id: string
@@ -31,8 +32,8 @@ function FeedContent() {
   return (
     <>
       <AppHeader email={user?.email} />
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-white/50 text-lg">Лента новостей (скоро)</p>
+      <div className="flex-1 overflow-y-auto pb-24">
+        <FeedPlaceholder />
       </div>
       <AppFooter />
       <PostEditorWrapper />
