@@ -167,6 +167,33 @@ function ChatContent() {
     await loadMessages(user.id, receiver.userId)
   }
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    const dayBefore = new Date(today)
+    dayBefore.setDate(today.getDate() - 2)
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Сегодня'
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Вчера'
+    } else if (date.toDateString() === dayBefore.toDateString()) {
+      return 'Позавчера'
+    } else {
+      return date.toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    }
+  }
+
+  const isSameDay = (date1: string, date2: string) => {
+    return new Date(date1).toDateString() === new Date(date2).toDateString()
+  }
+
   if (loading) return null
 
   return (
@@ -193,32 +220,88 @@ function ChatContent() {
               <p className="text-white/40 text-sm">Нет сообщений</p>
             </div>
           ) : (
-            messages.map((message) => {
+            messages.map((message, index) => {
               const isMine = message.senderId === user?.id
               const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
                 hour: '2-digit',
                 minute: '2-digit',
               })
 
+              // Проверяем, нужна ли дата перед этим сообщением
+              const showDate = index === 0 || !isSameDay(message.createdAt, messages[index - 1].createdAt)
+
               return (
-                <div key={message.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
-                    isMine
-                      ? 'bg-emerald-400 text-black rounded-br-sm'
-                      : 'bg-zinc-700/50 text-white rounded-bl-sm'
-                  }`}>
-                    <p className="text-sm">
-                      {message.text}
+                <div key={message.id}>
+                  {showDate && (
+                    <div className="flex justify-center my-4">
+                      <span className="px-3 py-1 rounded-full bg-zinc-700/50 text-white/60 text-[11px]">
+                        {formatDate(message.createdAt)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
+                      isMine
+                        ? 'bg-emerald-400 text-black rounded-br-sm'
+                        : 'bg-zinc-700/50 text-white rounded-bl-sm'
+                    }`}>
+                      <p className="text-sm">
+                        {message.text}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1 px-1">
+                      <p className="text-[10px] text-white/40">
+                        {time}
+                      </p>
                       {isMine && (
-                        <span className="text-[10px] ml-1">
-                          {message.isRead ? '✓✓' : '✓'}
+                        <span className="inline-flex items-center text-emerald-300">
+                          {message.isRead ? (
+                            <>
+                              <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+                                <path
+                                  d="M2 7L6 11L14 3"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  fill="none"
+                                  opacity="0.5"
+                                />
+                              </svg>
+                              <svg
+                                width="16"
+                                height="14"
+                                viewBox="0 0 16 14"
+                                fill="none"
+                                style={{ marginLeft: '-10px' }}
+                              >
+                                <path
+                                  d="M2 7L6 11L14 3"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  fill="none"
+                                />
+                              </svg>
+                            </>
+                          ) : (
+                            <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+                              <path
+                                d="M2 7L6 11L14 3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                fill="none"
+                              />
+                            </svg>
+                          )}
                         </span>
                       )}
-                    </p>
+                    </div>
                   </div>
-                  <p className="text-[10px] mt-1 px-1 text-white/40">
-                    {time}
-                  </p>
                 </div>
               )
             })
