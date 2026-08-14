@@ -173,7 +173,7 @@ function ChatContent() {
     <>
       <AppHeader email={user?.email} />
 
-      <div className="flex-1 flex flex-col pb-16 relative">
+      <div className="flex-1 flex flex-col min-h-[calc(100vh-120px)] pb-16 relative">
         <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
           <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold">
             {receiver?.avatarUrl ? (
@@ -187,36 +187,42 @@ function ChatContent() {
           </p>
         </div>
 
-        <div className="px-4 py-4 space-y-3">
-          {messages.map((message) => {
-            const isMine = message.senderId === user?.id
-            const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+        <div className="flex-1 px-4 py-4 space-y-3">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-white/40 text-sm">Нет сообщений</p>
+            </div>
+          ) : (
+            messages.map((message) => {
+              const isMine = message.senderId === user?.id
+              const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
 
-            return (
-              <div key={message.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
-                  isMine
-                    ? 'bg-emerald-400 text-black rounded-br-sm'
-                    : 'bg-zinc-700/50 text-white rounded-bl-sm'
-                }`}>
-                  <p className="text-sm">
-                    {message.text}
-                    {isMine && (
-                      <span className="text-[10px] ml-1">
-                        {message.isRead ? '✓✓' : '✓'}
-                      </span>
-                    )}
+              return (
+                <div key={message.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
+                    isMine
+                      ? 'bg-emerald-400 text-black rounded-br-sm'
+                      : 'bg-zinc-700/50 text-white rounded-bl-sm'
+                  }`}>
+                    <p className="text-sm">
+                      {message.text}
+                      {isMine && (
+                        <span className="text-[10px] ml-1">
+                          {message.isRead ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <p className="text-[10px] mt-1 px-1 text-white/40">
+                    {time}
                   </p>
                 </div>
-                <p className="text-[10px] mt-1 px-1 text-white/40">
-                  {time}
-                </p>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
           <div ref={bottomRef} />
         </div>
 
