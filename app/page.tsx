@@ -9,21 +9,11 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.push('/login')
       } else {
-        const { data: profile } = await supabase
-          .from('Profile')
-          .select('handle')
-          .eq('userId', user.id)
-          .single()
-
-        if (profile) {
-          router.replace(`/${profile.handle}`)
-        } else {
-          router.push('/login')
-        }
+        router.replace('/feed')
       }
     })
   }, [])
