@@ -6,6 +6,10 @@ import { useRouter, useParams } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
 import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
+import MessageBubble from '@/components/chat/MessageBubble'
+import DateDivider from '@/components/chat/DateDivider'
+import ChatHeader from '@/components/chat/ChatHeader'
+import ChatInput from '@/components/chat/ChatInput'
 
 interface Message {
   id: string
@@ -167,29 +171,6 @@ function ChatContent() {
     await loadMessages(user.id, receiver.userId)
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(today.getDate() - 1)
-    const dayBefore = new Date(today)
-    dayBefore.setDate(today.getDate() - 2)
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Сегодня'
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Вчера'
-    } else if (date.toDateString() === dayBefore.toDateString()) {
-      return 'Позавчера'
-    } else {
-      return date.toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      })
-    }
-  }
-
   const isSameDay = (date1: string, date2: string) => {
     return new Date(date1).toDateString() === new Date(date2).toDateString()
   }
@@ -201,18 +182,7 @@ function ChatContent() {
       <AppHeader email={user?.email} />
 
       <div className="flex-1 flex flex-col min-h-[calc(100vh-120px)] pb-16 relative">
-        <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3 flex-shrink-0">
-          <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold">
-            {receiver?.avatarUrl ? (
-              <img src={receiver.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              (receiver?.displayName || handle).charAt(0).toUpperCase()
-            )}
-          </div>
-          <p className="text-white font-medium">
-            {receiver?.displayName || `@${handle}`}
-          </p>
-        </div>
+        <ChatHeader receiver={receiver} handle={handle} />
 
         <div className="flex-1 px-4 py-4 space-y-3">
           {messages.length === 0 ? (
@@ -222,86 +192,12 @@ function ChatContent() {
           ) : (
             messages.map((message, index) => {
               const isMine = message.senderId === user?.id
-              const time = new Date(message.createdAt).toLocaleTimeString('ru-RU', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-
-              // Проверяем, нужна ли дата перед этим сообщением
               const showDate = index === 0 || !isSameDay(message.createdAt, messages[index - 1].createdAt)
 
               return (
                 <div key={message.id}>
-                  {showDate && (
-                    <div className="flex justify-center my-4">
-                      <span className="px-3 py-1 rounded-full bg-zinc-700/50 text-white/60 text-[11px]">
-                        {formatDate(message.createdAt)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[75%] px-4 py-2 rounded-2xl ${
-                      isMine
-                        ? 'bg-emerald-400 text-black rounded-br-sm'
-                        : 'bg-zinc-700/50 text-white rounded-bl-sm'
-                    }`}>
-                      <p className="text-sm">
-                        {message.text}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 px-1">
-                      <p className="text-[10px] text-white/40">
-                        {time}
-                      </p>
-                      {isMine && (
-                        <span className="inline-flex items-center text-emerald-300">
-                          {message.isRead ? (
-                            <>
-                              <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
-                                <path
-                                  d="M2 7L6 11L14 3"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  fill="none"
-                                  opacity="0.5"
-                                />
-                              </svg>
-                              <svg
-                                width="16"
-                                height="14"
-                                viewBox="0 0 16 14"
-                                fill="none"
-                                style={{ marginLeft: '-10px' }}
-                              >
-                                <path
-                                  d="M2 7L6 11L14 3"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  fill="none"
-                                />
-                              </svg>
-                            </>
-                          ) : (
-                            <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
-                              <path
-                                d="M2 7L6 11L14 3"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                fill="none"
-                              />
-                            </svg>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  {showDate && <DateDivider dateStr={message.createdAt} />}
+                  <MessageBubble message={message} isMine={isMine} />
                 </div>
               )
             })
@@ -318,24 +214,7 @@ function ChatContent() {
           </button>
         )}
 
-        <div className="px-4 py-3 border-t border-white/10 flex-shrink-0 bg-zinc-700/50">
-          <div className="flex gap-2">
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Сообщение..."
-              className="flex-1 bg-white/5 text-white text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:bg-white/10"
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!text.trim()}
-              className="w-10 h-10 rounded-xl bg-emerald-400 text-black font-semibold flex items-center justify-center disabled:opacity-30"
-            >
-              ➤
-            </button>
-          </div>
-        </div>
+        <ChatInput value={text} onChange={(e) => setText(e.target.value)} onSend={sendMessage} />
       </div>
 
       <AppFooter />
