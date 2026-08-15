@@ -34,15 +34,19 @@ export default function PostDescription({
         </p>
       )}
 
+      {description && hashtags.length > 0 && (
+        <div className="w-full h-px bg-[#18181b] mb-1" />
+      )}
+
       {hashtags.length > 0 && (
-        <p className="text-emerald-300 text-xs leading-relaxed break-words mb-1">
+        <p className="text-emerald-500/70 text-xs leading-relaxed break-words mb-1">
           {(expanded ? hashtags : visibleTags).map((tag, i) => (
             <span key={i} className="mr-1.5">
               {tag}
             </span>
           ))}
           {!expanded && hiddenTagsCount > 0 && (
-            <span className="text-white/50">... +{hiddenTagsCount}</span>
+            <span className="text-white/40">... +{hiddenTagsCount}</span>
           )}
         </p>
       )}

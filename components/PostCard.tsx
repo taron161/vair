@@ -159,12 +159,13 @@ export default function PostCard({ post, userId }: PostCardProps) {
   });
 
   return (
-    <div className="rounded-2xl bg-zinc-800/30 border border-white/5 overflow-hidden">
-      <div className="px-4 pt-3 pb-2 border-b-2 border-emerald-400/30 bg-white/[0.02]">
+    <div className="rounded-2xl bg-zinc-800/30 overflow-hidden">
+      {/* Блок с описанием — бордер снизу цвета карточек */}
+      <div className="px-4 pt-3 pb-2 border-b-2 border-[#18181b] bg-white/[0.02]">
         <div className="flex gap-3">
           {/* Кружок и дата под ним */}
           <div className="flex flex-col items-center flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 border-2 border-emerald-400/50 flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold">
               {authorAvatar ? (
                 <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -220,6 +221,7 @@ export default function PostCard({ post, userId }: PostCardProps) {
 
       <PostItem post={post} />
 
+      {/* Блок действий — бордер сверху цвета карточек */}
       <PostActions
         liked={liked}
         likesCount={likesCount}
