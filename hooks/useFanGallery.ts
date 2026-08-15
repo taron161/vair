@@ -7,6 +7,7 @@ interface Photo {
   url: string;
   caption?: string | null;
   type: string;
+  fullUrl?: string;
 }
 
 export function useFanGallery(photos: Photo[]) {

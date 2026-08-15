@@ -10,7 +10,7 @@ import { useImageCompression } from '@/hooks/useImageCompression';
 interface EditData {
   postId: string;
   caption: string | null;
-  media: { id: string; url: string; type: string; order: number }[];
+  media: { id: string; url: string; type: string; order: number; fullUrl?: string }[];
 }
 
 export default function PostEditorWrapper() {
@@ -44,11 +44,17 @@ export default function PostEditorWrapper() {
     const reordered = [...cover, ...orderedMedia];
 
     for (let i = 0; i < reordered.length; i++) {
-      let file = reordered[i];
-      if (file.type.startsWith('image/') && !file.type.includes('gif')) {
-        file = await compressImage(file);
+      const originalFile = reordered[i];
+      
+      if (originalFile.type.startsWith('image/') && !originalFile.type.includes('gif')) {
+        const file600 = await compressImage(originalFile, 600);
+        const file1200 = await compressImage(originalFile, 1200);
+        
+        formData.append('files600', file600);
+        formData.append('files1200', file1200);
+      } else {
+        formData.append('files', originalFile);
       }
-      formData.append('files', file);
     }
 
     formData.append('userId', user.id);

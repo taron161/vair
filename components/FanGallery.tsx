@@ -1,13 +1,14 @@
 'use client';
 
-import { useFanGallery } from '@/hooks/useFanGallery';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFanGallery } from '@/hooks/useFanGallery';
 
 interface Photo {
   id: string;
   url: string;
   caption?: string | null;
   type: string;
+  fullUrl?: string;
 }
 
 interface FanGalleryProps {
@@ -168,6 +169,17 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
                   alt=""
                   className="w-full rounded-xl"
                   style={{ aspectRatio: '260 / 370', objectFit: 'cover' }}
+                  onLoad={(e) => {
+                    if (expandedPhoto.fullUrl) {
+                      const target = e.currentTarget as HTMLImageElement;
+                      const fullUrl = expandedPhoto.fullUrl;
+                      const img = new Image();
+                      img.src = fullUrl;
+                      img.onload = () => {
+                        target.src = fullUrl;
+                      };
+                    }
+                  }}
                 />
               )}
             </motion.div>
