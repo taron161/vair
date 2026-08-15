@@ -7,6 +7,7 @@ interface Media {
   url: string;
   type: string;
   order: number;
+  fullUrl?: string;
 }
 
 interface Post {
