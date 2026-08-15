@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import PostItem from '@/components/PostItem';
 import CommentsModal from '@/components/CommentsModal';
 import PostHeader from '@/components/post/PostHeader';
@@ -16,6 +17,7 @@ interface Media {
   url: string;
   type: string;
   order: number;
+  fullUrl?: string;
 }
 
 interface Post {
@@ -43,6 +45,7 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
   const [authorName, setAuthorName] = useState<string | null>(null);
+  const [authorHandle, setAuthorHandle] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -72,12 +75,13 @@ export default function PostCard({ post, userId }: PostCardProps) {
 
       const { data: profile } = await supabase
         .from('Profile')
-        .select('avatarUrl, displayName')
+        .select('avatarUrl, displayName, handle')
         .eq('userId', post.userId)
         .single();
       if (profile) {
         setAuthorAvatar(profile.avatarUrl);
         setAuthorName(profile.displayName);
+        setAuthorHandle(profile.handle);
       }
     };
 
@@ -160,27 +164,30 @@ export default function PostCard({ post, userId }: PostCardProps) {
 
   return (
     <div className="rounded-2xl bg-zinc-800/30 overflow-hidden">
-      {/* Блок с описанием — бордер снизу цвета карточек */}
       <div className="px-4 pt-3 pb-2 border-b-2 border-[#18181b] bg-white/[0.02]">
         <div className="flex gap-3">
           {/* Кружок и дата под ним */}
           <div className="flex flex-col items-center flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold">
-              {authorAvatar ? (
-                <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
-              ) : (
-                authorName?.charAt(0).toUpperCase() || '?'
-              )}
-            </div>
+            <Link href={`/${authorHandle || ''}`} className="block">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-400/30 flex items-center justify-center text-white text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity">
+                {authorAvatar ? (
+                  <img src={authorAvatar} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  authorName?.charAt(0).toUpperCase() || '?'
+                )}
+              </div>
+            </Link>
             <p className="text-white/30 text-[9px] mt-1 text-center leading-tight">{dateStr}</p>
             <p className="text-white/20 text-[8px] text-center leading-tight">{timeStr}</p>
           </div>
 
           {/* Имя и описание */}
           <div className="flex-1 min-w-0">
-            <p className="text-white/50 text-xs mb-1">
-              {authorName || 'Пользователь'}
-            </p>
+            <Link href={`/${authorHandle || ''}`} className="inline-block">
+              <p className="text-white/50 text-xs mb-1 hover:text-white/80 transition-colors cursor-pointer">
+                {authorName || 'Пользователь'}
+              </p>
+            </Link>
 
             {description && (
               <PostDescription
@@ -221,7 +228,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
 
       <PostItem post={post} />
 
-      {/* Блок действий — бордер сверху цвета карточек */}
       <PostActions
         liked={liked}
         likesCount={likesCount}
