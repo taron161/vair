@@ -30,6 +30,11 @@ export default function PostEditorWrapper() {
   }, []);
 
   const handleCreateSave = async (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => {
+    if (!data.media || data.media.length === 0) {
+      alert('Нет файлов для загрузки');
+      return;
+    }
+
     setUploading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -43,18 +48,36 @@ export default function PostEditorWrapper() {
     const cover = orderedMedia.splice(data.coverIndex, 1);
     const reordered = [...cover, ...orderedMedia];
 
+    let hasValidFiles = false;
+
     for (let i = 0; i < reordered.length; i++) {
       const originalFile = reordered[i];
+
+      if (originalFile.size === 0) {
+        continue;
+      }
       
+      hasValidFiles = true;
+
       if (originalFile.type.startsWith('image/') && !originalFile.type.includes('gif')) {
         const file600 = await compressImage(originalFile, 600);
         const file1200 = await compressImage(originalFile, 1200);
+
+        if (file600.size === 0 || file1200.size === 0) {
+          continue;
+        }
         
         formData.append('files600', file600);
         formData.append('files1200', file1200);
       } else {
         formData.append('files', originalFile);
       }
+    }
+
+    if (!hasValidFiles) {
+      setUploading(false);
+      alert('Нет файлов для загрузки');
+      return;
     }
 
     formData.append('userId', user.id);
@@ -86,6 +109,8 @@ export default function PostEditorWrapper() {
       if (profile) {
         router.push(`/${profile.handle}`);
       }
+    } else {
+      alert('Ошибка загрузки. Попробуйте снова.');
     }
   };
 
