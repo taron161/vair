@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import FollowersModal from '@/components/profile/FollowersModal';
 
 interface Profile {
   id: string;
@@ -21,11 +22,13 @@ interface ProfileHeaderProps {
 
 export default function ProfileHeader({ profile }: ProfileHeaderProps) {
   const [followersCount, setFollowersCount] = useState(0);
+  const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowedBack, setIsFollowedBack] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showFollowers, setShowFollowers] = useState(false);
   const router = useRouter();
 
   const randomColors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#22d3ee', '#818cf8', '#c084fc', '#f472b6'];
@@ -53,11 +56,14 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
     };
 
     const loadData = async () => {
+      setLoadingFollowers(true);
+
       const { count } = await supabase
         .from('Follow')
         .select('*', { count: 'exact', head: true })
         .eq('followingId', profile.userId);
       setFollowersCount(count || 0);
+      setLoadingFollowers(false);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -145,14 +151,16 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
             <p className="text-white/50 text-xs mb-1">📅 {formatBirthDate(profile.birthDate)}</p>
           )}
 
-          <button
-            onClick={() => {
-              alert(`Подписчиков: ${followersCount}`);
-            }}
-            className="text-white/50 text-xs hover:text-white/80 transition-colors cursor-pointer"
-          >
-            <span className="font-semibold text-white">{followersCount}</span> подписчиков
-          </button>
+          {loadingFollowers ? (
+            <div className="w-24 h-3 bg-white/10 rounded animate-pulse" />
+          ) : (
+            <button
+              onClick={() => setShowFollowers(true)}
+              className="text-white/50 text-xs hover:text-white/80 transition-colors cursor-pointer"
+            >
+              <span className="font-semibold text-white">{followersCount}</span> подписчиков
+            </button>
+          )}
 
           {profile.bio && (
             <p className="text-white/70 text-sm mt-2">{profile.bio}</p>
@@ -192,6 +200,13 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           </>
         )}
       </div>
+
+      {showFollowers && (
+        <FollowersModal
+          userId={profile.userId}
+          onClose={() => setShowFollowers(false)}
+        />
+      )}
     </div>
   );
 }
