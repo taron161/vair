@@ -48,55 +48,112 @@ function ProfileContent() {
     })
   }, [])
 
+  const compressImage = async (file: File, maxWidth: number): Promise<File> => {
+    return new Promise((resolve) => {
+      const img = new window.Image()
+      img.src = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(img.src)
+
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(file)
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file)
+            return
+          }
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          })
+          resolve(compressedFile)
+        }, 'image/jpeg', 0.85)
+      }
+      img.onerror = () => resolve(file)
+    })
+  }
+
   const handleAvatarSave = async (file: File) => {
     if (!user) return
 
-    const fileName = `${user.id}-${Date.now()}.jpg`
+    const timestamp = Date.now()
+    const fileName450 = `${user.id}-${timestamp}-450.jpg`
+    const fileName120 = `${user.id}-${timestamp}-120.jpg`
 
-    let uploadError: { message?: string } | null = null;
+    // Создаём 450px
+    const img450 = await compressImage(file, 450)
+
+    // Создаём 120px
+    const img120 = await compressImage(file, 120)
+
+    // Загружаем обе
+    let uploadError: { message?: string } | null = null
+
     for (let attempt = 0; attempt < 3; attempt++) {
-      const result = await supabase
-        .storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
+      const result450 = await supabase.storage.from('avatars').upload(fileName450, img450, { upsert: true })
+      if (result450.error) {
+        uploadError = result450.error
+        await new Promise(r => setTimeout(r, 2000))
+        continue
+      }
 
-      uploadError = result.error;
-      if (!uploadError) break;
+      const result120 = await supabase.storage.from('avatars').upload(fileName120, img120, { upsert: true })
+      if (result120.error) {
+        uploadError = result120.error
+        await new Promise(r => setTimeout(r, 2000))
+        continue
+      }
 
-      console.error(`Upload attempt ${attempt + 1} failed:`, uploadError);
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      uploadError = null
+      break
     }
 
     if (uploadError) {
-      console.error('Upload avatar error after retries:', uploadError);
-      return;
+      console.error('Upload error:', uploadError)
+      return
     }
 
-    const { data: urlData } = supabase
-      .storage
-      .from('avatars')
-      .getPublicUrl(fileName);
+    const { data: url450 } = supabase.storage.from('avatars').getPublicUrl(fileName450)
+    const { data: url120 } = supabase.storage.from('avatars').getPublicUrl(fileName120)
 
-    // Удаляем старые аватары этого пользователя
-    const { data: filesList } = await supabase.storage.from('avatars').list();
-    const oldFiles = filesList?.filter(f => f.name.startsWith(user.id) && f.name !== fileName) || [];
+    // Удаляем старые аватары
+    const { data: filesList } = await supabase.storage.from('avatars').list()
+    const oldFiles = filesList?.filter(f => f.name.startsWith(user.id) && f.name !== fileName450 && f.name !== fileName120) || []
     for (const oldFile of oldFiles) {
-      await supabase.storage.from('avatars').remove([oldFile.name]);
+      await supabase.storage.from('avatars').remove([oldFile.name])
     }
 
-    const { error: updateError } = await supabase
+    // Обновляем профиль
+    await supabase
       .from('Profile')
-      .update({ avatarUrl: urlData.publicUrl, updatedAt: new Date().toISOString() })
-      .eq('userId', user.id);
+      .update({
+        avatarUrl: url450.publicUrl,
+        avatarUrlSmall: url120.publicUrl,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('userId', user.id)
 
-    if (updateError) {
-      console.error('Update profile error:', updateError);
-      return;
-    }
-
-    setAvatarUrl(urlData.publicUrl);
-    setShowCropper(false);
-  };
+    setAvatarUrl(url450.publicUrl)
+    setShowCropper(false)
+  }
 
   const handleNameSave = async () => {
     if (!user || !nameInput.trim()) return
