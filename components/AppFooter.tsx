@@ -27,17 +27,17 @@ export default function AppFooter() {
   if (pathname === '/login') return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-      <div className="w-full max-w-[460px] bg-zinc-700/50 backdrop-blur-lg border-t border-white/15 px-4 py-1.5 flex items-center justify-between">
-        <Link href="/feed" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/feed' ? 'text-white' : 'text-white/50'}`}>
+    <div className="fixed bottom-2 left-0 right-0 flex justify-center z-50 px-1.5">
+      <div className="w-full max-w-[448px] bg-zinc-700/50 backdrop-blur-lg border-t border-white/15 px-4 py-1 flex items-center justify-between rounded-full shadow-lg shadow-black/20">
+        <Link href="/feed" className={`w-9 h-9 flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 cursor-pointer ${pathname === '/feed' ? 'text-white' : 'text-white/50'}`}>
           📰
         </Link>
 
-        <Link href="/explore" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/explore' ? 'text-white' : 'text-white/50'}`}>
+        <Link href="/explore" className={`w-9 h-9 flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 cursor-pointer ${pathname === '/explore' ? 'text-white' : 'text-white/50'}`}>
           🔍
         </Link>
 
-        <label className="relative w-14 h-14 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
+        <label className="relative w-11 h-11 flex items-center justify-center cursor-pointer active:scale-90 transition-transform">
           <input
             type="file"
             accept="image/*,video/*"
@@ -46,24 +46,24 @@ export default function AppFooter() {
             className="hidden"
             disabled={uploading}
           />
-          <div className="w-12 h-12 rounded-full bg-emerald-400/40 backdrop-blur-sm flex items-center justify-center shadow-lg">
-            <span className="text-white text-3xl font-bold leading-none">+</span>
+          <div className="w-10 h-10 rounded-full bg-emerald-400/40 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <span className="text-white text-2xl font-bold leading-none">+</span>
           </div>
         </label>
 
-        <Link href="/messages" className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === '/messages' ? 'text-white' : 'text-white/50'}`}>
+        <Link href="/messages" className={`w-9 h-9 flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 cursor-pointer ${pathname === '/messages' ? 'text-white' : 'text-white/50'}`}>
           💬
         </Link>
 
         {handle ? (
           <Link
             href={`/${handle}`}
-            className={`w-10 h-10 flex items-center justify-center text-xl ${pathname === `/${handle}` ? 'text-white' : 'text-white/50'}`}
+            className={`w-9 h-9 flex items-center justify-center text-lg transition-all hover:scale-110 active:scale-95 cursor-pointer ${pathname === `/${handle}` ? 'text-white' : 'text-white/50'}`}
           >
             👤
           </Link>
         ) : (
-          <div className="w-10 h-10 flex items-center justify-center text-xl text-white/50">
+          <div className="w-9 h-9 flex items-center justify-center text-lg text-white/50">
             👤
           </div>
         )}

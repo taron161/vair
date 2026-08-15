@@ -27,18 +27,18 @@ export default function AppHeader({ email }: AppHeaderProps) {
   }, []);
 
   return (
-    <header className="px-4 py-1 border-b border-white/15 bg-zinc-700/50 flex justify-between items-center flex-shrink-0">
+    <header className="px-4 py-0.5 border-b border-white/15 bg-zinc-700/40 backdrop-blur-lg flex justify-between items-center flex-shrink-0 rounded-b-2xl shadow-lg shadow-black/20">
       <Link href="/" className="flex items-center -ml-2">
         <img
           src="/logo-192.png"
           alt="VAIR"
-          className="w-16 h-16 object-contain"
+          className="w-12 h-12 object-contain"
         />
       </Link>
 
       <Link
         href="/profile"
-        className="w-12 h-12 rounded-full overflow-hidden bg-emerald-400/40 flex items-center justify-center text-white text-lg font-medium hover:bg-emerald-400/60 transition-colors"
+        className="w-9 h-9 rounded-full overflow-hidden bg-emerald-400/40 flex items-center justify-center text-white text-base font-medium hover:bg-emerald-400/60 transition-colors"
       >
         {avatarUrl ? (
           <img src={avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
