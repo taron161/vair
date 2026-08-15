@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import MessageBubble from '@/components/chat/MessageBubble'
 import DateDivider from '@/components/chat/DateDivider'
@@ -180,8 +179,6 @@ function ChatContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
-
       <div className="flex-1 flex flex-col min-h-[calc(100vh-120px)] pb-16 relative">
         <ChatHeader receiver={receiver} handle={handle} />
 

@@ -3,7 +3,6 @@ import AppFooter from '@/components/AppFooter';
 import { UploadProvider } from '@/lib/UploadContext';
 import PostEditorWrapper from '@/components/PostEditorWrapper';
 import PostListClient from './PostListClient';
-import HeaderClient from './HeaderClient';
 import { loadUserPosts } from '@/lib/loadUserPosts';
 
 export default async function UserProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -16,7 +15,6 @@ export default async function UserProfilePage({ params }: { params: Promise<{ ha
 
   return (
     <UploadProvider>
-      <HeaderClient email={profile.displayName || undefined} />
       <div className="flex-1 overflow-y-auto pt-[30px] pb-24">
         {posts.length === 0 ? (
           <div className="flex items-center justify-center h-full">

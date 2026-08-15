@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 
 interface UserData {
   id: string
@@ -28,7 +27,6 @@ function SettingsContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
       <div className="flex-1 flex items-center justify-center">
         <p className="text-white/50 text-lg">Настройки (скоро)</p>
       </div>

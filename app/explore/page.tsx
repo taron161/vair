@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
 import SearchBar from '@/components/explore/SearchBar'
@@ -59,8 +58,6 @@ function ExploreContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
-
       <div className="flex-1 overflow-y-auto pb-24 pt-4">
         <SearchBar value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         <UsersList profiles={profiles} />

@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import DialogList from '@/components/messages/DialogList'
 
@@ -78,7 +77,6 @@ function MessagesContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
       <div className="flex-1 overflow-y-auto pb-24">
         <DialogList dialogs={dialogs} />
       </div>

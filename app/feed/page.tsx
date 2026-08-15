@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
 import FeedPlaceholder from '@/components/feed/FeedPlaceholder'
@@ -31,7 +30,6 @@ function FeedContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
       <div className="flex-1 overflow-y-auto pb-24">
         <FeedPlaceholder />
       </div>

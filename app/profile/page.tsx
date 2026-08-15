@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
-import AppHeader from '@/components/AppHeader'
 import AvatarCropper from '@/components/AvatarCropper'
 import AvatarSection from '@/components/profile/AvatarSection'
 import ProfileActions from '@/components/profile/ProfileActions'
@@ -115,7 +114,6 @@ function ProfileContent() {
 
   return (
     <>
-      <AppHeader email={user?.email} />
       <div className="flex-1 overflow-y-auto px-4 pt-8">
         <AvatarSection avatarUrl={avatarUrl} displayName={displayName} email={user?.email} />
 
