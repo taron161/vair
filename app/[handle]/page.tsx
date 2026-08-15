@@ -3,6 +3,7 @@ import AppFooter from '@/components/AppFooter';
 import { UploadProvider } from '@/lib/UploadContext';
 import PostEditorWrapper from '@/components/PostEditorWrapper';
 import PostListClient from './PostListClient';
+import ProfileHeader from '@/components/profile/ProfileHeader';
 import { loadUserPosts } from '@/lib/loadUserPosts';
 
 export default async function UserProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -15,7 +16,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ ha
 
   return (
     <UploadProvider>
-      <div className="flex-1 overflow-y-auto pt-[30px] pb-24">
+      <ProfileHeader profile={profile} />
+      <div className="flex-1 overflow-y-auto pt-4 pb-24">
         {posts.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-white/50 text-sm">Нет постов</p>
