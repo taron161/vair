@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useUpload } from '@/lib/UploadContext';
+import { supabase } from '@/lib/supabase';
 
 export default function AppFooter() {
   const pathname = usePathname();
@@ -12,17 +13,31 @@ export default function AppFooter() {
   const { uploading, handleFileSelect } = useUpload();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') return;
 
     const frame = requestAnimationFrame(() => {
-      const cachedHandle = localStorage.getItem('userHandle')
+      const cachedHandle = localStorage.getItem('userHandle');
       if (cachedHandle) {
-        setHandle(cachedHandle)
+        setHandle(cachedHandle);
       }
-    })
 
-    return () => cancelAnimationFrame(frame)
-  }, [])
+      supabase.auth.getUser().then(async ({ data: { user } }) => {
+        if (user) {
+          const { data: profile } = await supabase
+            .from('Profile')
+            .select('handle')
+            .eq('userId', user.id)
+            .single();
+          if (profile?.handle) {
+            localStorage.setItem('userHandle', profile.handle);
+            setHandle(profile.handle);
+          }
+        }
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   if (pathname === '/login') return null;
 

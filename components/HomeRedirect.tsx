@@ -9,11 +9,24 @@ export default function HomeRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) {
         router.push('/login');
       } else {
-        router.replace('/feed');
+        // Обновляем handle в localStorage при каждом заходе
+        const { data: profile } = await supabase
+          .from('Profile')
+          .select('handle')
+          .eq('userId', user.id)
+          .single();
+
+        if (profile?.handle) {
+          localStorage.removeItem('userHandle');
+          localStorage.setItem('userHandle', profile.handle);
+          router.replace(`/${profile.handle}`);
+        } else {
+          router.replace('/feed');
+        }
       }
     });
   }, [router]);

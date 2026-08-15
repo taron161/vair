@@ -13,7 +13,9 @@ interface Profile {
   avatarUrl?: string | null;
   avatarUrlSmall?: string | null;
   birthDate?: string | null;
+  showBirthDate?: boolean;
   bio?: string | null;
+  gender?: string | null;
 }
 
 interface ProfileHeaderProps {
@@ -147,7 +149,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           </p>
           <p className="text-white/40 text-xs mb-1">@{profile.handle}</p>
 
-          {formatBirthDate(profile.birthDate) && (
+          {profile.showBirthDate !== false && formatBirthDate(profile.birthDate) && (
             <p className="text-white/50 text-xs mb-1">📅 {formatBirthDate(profile.birthDate)}</p>
           )}
 

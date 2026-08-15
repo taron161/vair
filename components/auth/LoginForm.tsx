@@ -40,10 +40,19 @@ export default function LoginForm() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        // Очищаем старый кеш
+
+        // Очищаем и записываем новый handle
         localStorage.removeItem('userHandle');
         localStorage.setItem('userHandle', handle);
-        router.push('/');
+
+        // Пытаемся автоматически войти
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (!signInError) {
+          router.push(`/${handle}`);
+        } else {
+          setError('Аккаунт создан. Войдите.');
+          setIsRegister(false);
+        }
       }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -63,8 +72,10 @@ export default function LoginForm() {
         if (profile?.handle) {
           localStorage.removeItem('userHandle');
           localStorage.setItem('userHandle', profile.handle);
+          router.push(`/${profile.handle}`);
+        } else {
+          router.push('/feed');
         }
-        router.push('/');
       }
     }
   };
