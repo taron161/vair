@@ -32,8 +32,11 @@ export default function CommentsModal({ postId, onClose, onCommentAdded }: Comme
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
   }, []);
 

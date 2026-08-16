@@ -8,6 +8,7 @@ import PostDescription from '@/components/post/PostDescription';
 import PostMenu from '@/components/post/PostMenu';
 import PostActions from '@/components/post/PostActions';
 import DeleteConfirmModal from '@/components/post/DeleteConfirmModal';
+import LikersModal from '@/components/post/LikersModal';
 import { supabase } from '@/lib/supabase';
 
 interface Media {
@@ -39,6 +40,8 @@ export default function PostCard({ post, userId }: PostCardProps) {
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showLikers, setShowLikers] = useState(false);
+  const [likersAvatars, setLikersAvatars] = useState<string[]>([]);
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
   const [authorName, setAuthorName] = useState<string | null>(null);
   const [authorHandle, setAuthorHandle] = useState<string | null>(null);
@@ -56,7 +59,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
       const currentUserId = user?.id || '';
       setCurrentUserId(currentUserId);
 
-      // Проверяем свой лайк
       if (currentUserId) {
         const { data: like } = await supabase
           .from('Like')
@@ -67,7 +69,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
         setLiked(!!like);
       }
 
-      // Получаем актуальное количество лайков
       const { count: actualLikesCount } = await supabase
         .from('Like')
         .select('*', { count: 'exact', head: true })
@@ -77,7 +78,6 @@ export default function PostCard({ post, userId }: PostCardProps) {
         setLikesCount(actualLikesCount);
       }
 
-      // Получаем актуальное количество комментариев
       const { count: actualCommentsCount } = await supabase
         .from('Comment')
         .select('*', { count: 'exact', head: true })
@@ -87,7 +87,41 @@ export default function PostCard({ post, userId }: PostCardProps) {
         setCommentsCount(actualCommentsCount);
       }
 
-      // Загружаем автора
+      if (currentUserId) {
+        const { data: follows } = await supabase
+          .from('Follow')
+          .select('followingId')
+          .eq('followerId', currentUserId);
+
+        const followingIds = follows?.map((f: { followingId: string }) => f.followingId) || [];
+
+        if (followingIds.length > 0) {
+          const { data: likesData } = await supabase
+            .from('Like')
+            .select('userId')
+            .eq('postId', post.id);
+
+          if (likesData) {
+            const likerIds = likesData
+              .map((l: { userId: string }) => l.userId)
+              .filter((id: string) => followingIds.includes(id))
+              .slice(0, 7);
+
+            if (likerIds.length > 0) {
+              const { data: profiles } = await supabase
+                .from('Profile')
+                .select('avatarUrlSmall, avatarUrl')
+                .in('userId', likerIds);
+
+              const avatars = (profiles || [])
+                .map((p: { avatarUrlSmall?: string | null; avatarUrl?: string | null }) => p.avatarUrlSmall || p.avatarUrl)
+                .filter(Boolean) as string[];
+              setLikersAvatars(avatars);
+            }
+          }
+        }
+      }
+
       const { data: profile } = await supabase
         .from('Profile')
         .select('avatarUrl, displayName, handle')
@@ -249,7 +283,23 @@ export default function PostCard({ post, userId }: PostCardProps) {
         commentsCount={commentsCount}
         onToggleLike={toggleLike}
         onShowComments={() => setShowComments(true)}
+        onShowLikers={() => setShowLikers(true)}
       />
+
+      {/* Кружки лайкнувших — максимум 7 */}
+      {likersAvatars.length > 0 && (
+        <div className="flex items-center px-4 pb-3 -mt-2">
+          {likersAvatars.map((avatar, index) => (
+            <div
+              key={index}
+              className="w-6 h-6 rounded-full overflow-hidden border-2 border-[#18181b]"
+              style={{ marginLeft: index === 0 ? 0 : '-8px' }}
+            >
+              <img src={avatar} alt="" className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {showComments && (
         <CommentsModal
@@ -257,6 +307,10 @@ export default function PostCard({ post, userId }: PostCardProps) {
           onClose={() => setShowComments(false)}
           onCommentAdded={() => setCommentsCount((c) => c + 1)}
         />
+      )}
+
+      {showLikers && (
+        <LikersModal postId={post.id} onClose={() => setShowLikers(false)} />
       )}
 
       {showDeleteConfirm && (

@@ -5,14 +5,39 @@ import { UploadProvider } from '@/lib/UploadContext';
 import AppHeader from '@/components/AppHeader';
 import AppFooter from '@/components/AppFooter';
 import PostEditorWrapper from '@/components/PostEditorWrapper';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  useEffect(() => {
+    // Глобальная проверка авторизации
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Если не авторизован и не на логине — отправляем на логин
+      if (!user && pathname !== '/login') {
+        router.push('/login');
+      }
+
+      // Если авторизован и на логине — отправляем на главную
+      if (user && pathname === '/login') {
+        router.push('/feed');
+      }
+    };
+
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [pathname, router]);
 
   return (
     <UploadProvider>
