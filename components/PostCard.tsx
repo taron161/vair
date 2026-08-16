@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import PostItem from '@/components/PostItem';
 import CommentsModal from '@/components/CommentsModal';
-import PostHeader from '@/components/post/PostHeader';
 import PostDescription from '@/components/post/PostDescription';
 import PostMenu from '@/components/post/PostMenu';
 import PostActions from '@/components/post/PostActions';
@@ -26,6 +24,8 @@ interface Post {
   createdAt: string;
   media: Media[];
   userId?: string;
+  likes_count?: number;
+  comments_count?: number;
 }
 
 interface PostCardProps {
@@ -33,14 +33,10 @@ interface PostCardProps {
   userId: string;
 }
 
-interface Like {
-  userId: string;
-}
-
 export default function PostCard({ post, userId }: PostCardProps) {
   const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [commentsCount, setCommentsCount] = useState(0);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [authorAvatar, setAuthorAvatar] = useState<string | null>(null);
@@ -60,19 +56,18 @@ export default function PostCard({ post, userId }: PostCardProps) {
       const currentUserId = user?.id || '';
       setCurrentUserId(currentUserId);
 
-      const { data: likes } = await supabase
-        .from('Like')
-        .select('*')
-        .eq('postId', post.id);
-      setLikesCount(likes?.length || 0);
-      setLiked(likes?.some((l: Like) => l.userId === currentUserId) || false);
+      // Проверяем только свой лайк — счётчики уже в post
+      if (currentUserId) {
+        const { data: like } = await supabase
+          .from('Like')
+          .select('id')
+          .eq('postId', post.id)
+          .eq('userId', currentUserId)
+          .single();
+        setLiked(!!like);
+      }
 
-      const { count } = await supabase
-        .from('Comment')
-        .select('*', { count: 'exact', head: true })
-        .eq('postId', post.id);
-      setCommentsCount(count || 0);
-
+      // Загружаем автора
       const { data: profile } = await supabase
         .from('Profile')
         .select('avatarUrl, displayName, handle')
