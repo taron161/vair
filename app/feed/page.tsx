@@ -30,29 +30,6 @@ interface Post {
   score?: number
 }
 
-interface LikeData {
-  id: string
-  postId: string
-  userId: string
-  createdAt: string
-}
-
-interface CommentData {
-  id: string
-  postId: string
-  userId: string
-  text: string
-  createdAt: string
-}
-
-interface PostData {
-  id: string
-  userId: string
-  caption: string | null
-  createdAt: string
-  updatedAt: string
-}
-
 function FeedContent() {
   const [user, setUser] = useState<UserData | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -74,82 +51,85 @@ function FeedContent() {
         return;
       }
 
-      const { data: postsData } = await supabase
+      const { data: postsData, error: feedError } = await supabase
         .from('Post')
-        .select('*')
+        .select(`
+          *,
+          media:Media(*),
+          likes:Like(*),
+          comments:Comment(*)
+        `)
         .in('userId', followingIds)
         .order('createdAt', { ascending: false });
 
-      if (postsData) {
-        const postsWithScore = await Promise.all(
-          postsData.map(async (post: PostData) => {
-            const { data: likes } = await supabase
-              .from('Like')
-              .select('*')
-              .eq('postId', post.id);
-            
-            const likesCount = likes?.length || 0;
-
-            const lastDayLikes = likes?.filter((l: LikeData) => {
-              const likeDate = new Date(l.createdAt);
-              const now = new Date();
-              return now.getTime() - likeDate.getTime() < 24 * 60 * 60 * 1000;
-            }).length || 0;
-
-            const { data: comments } = await supabase
-              .from('Comment')
-              .select('*')
-              .eq('postId', post.id);
-            
-            const commentsCount = comments?.length || 0;
-
-            const lastDayComments = comments?.filter((c: CommentData) => {
-              const commentDate = new Date(c.createdAt);
-              const now = new Date();
-              return now.getTime() - commentDate.getTime() < 24 * 60 * 60 * 1000;
-            }).length || 0;
-
-            const { data: media } = await supabase
-              .from('Media')
-              .select('*')
-              .eq('postId', post.id)
-              .order('order', { ascending: true });
-
-            const postAge = Date.now() - new Date(post.createdAt).getTime();
-            const ageHours = Math.max(1, postAge / (1000 * 60 * 60));
-            
-            const score = 
-              (lastDayLikes * 10) + 
-              (lastDayComments * 20) + 
-              (likesCount / ageHours) + 
-              (commentsCount / ageHours) +
-              (1000 / ageHours);
-
-            return {
-              ...post,
-              media: media || [],
-              score,
-            };
-          })
-        );
-
-        postsWithScore.sort((a, b) => (b.score || 0) - (a.score || 0));
-        setPosts(postsWithScore as Post[]);
+      if (feedError) {
+        console.error('Feed error:', feedError);
+        setPosts([]);
+        setLoading(false);
+        return;
       }
+
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      const now = Date.now();
+      const dayInMs = 24 * 60 * 60 * 1000;
+
+      const postsWithScore = postsData.map((post: any) => {
+        const likes = post.likes || [];
+        const comments = post.comments || [];
+        const media = post.media || [];
+
+        const likesCount = likes.length;
+        const commentsCount = comments.length;
+
+        const lastDayLikes = likes.filter((l: any) => {
+          return now - new Date(l.createdAt).getTime() < dayInMs;
+        }).length;
+
+        const lastDayComments = comments.filter((c: any) => {
+          return now - new Date(c.createdAt).getTime() < dayInMs;
+        }).length;
+
+        const postAge = now - new Date(post.createdAt).getTime();
+        const ageHours = Math.max(1, postAge / (1000 * 60 * 60));
+
+        const score =
+          (lastDayLikes * 10) +
+          (lastDayComments * 20) +
+          (likesCount / ageHours) +
+          (commentsCount / ageHours) +
+          (1000 / ageHours);
+
+        return {
+          id: post.id,
+          caption: post.caption,
+          createdAt: post.createdAt,
+          userId: post.userId,
+          media: media.sort((a: any, b: any) => a.order - b.order),
+          score,
+        };
+      });
+
+      postsWithScore.sort((a, b) => (b.score || 0) - (a.score || 0));
+      setPosts(postsWithScore as Post[]);
       setLoading(false);
     };
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
-        router.push('/login')
+        router.push('/login');
       } else {
-        setUser(user)
-        loadFeed(user.id)
+        setUser(user);
+        loadFeed(user.id);
       }
-    })
-  }, [router])
+    });
+  }, [router]);
 
-  if (loading) return null
+  if (loading) return null;
 
   return (
     <>
@@ -168,7 +148,7 @@ function FeedContent() {
       <AppFooter />
       <PostEditorWrapper />
     </>
-  )
+  );
 }
 
 export default function FeedPage() {
@@ -176,5 +156,5 @@ export default function FeedPage() {
     <UploadProvider>
       <FeedContent />
     </UploadProvider>
-  )
+  );
 }

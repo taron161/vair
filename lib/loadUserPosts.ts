@@ -10,6 +10,7 @@ interface Media {
   url: string;
   type: string;
   order: number;
+  fullUrl?: string;
 }
 
 interface Post {
@@ -35,18 +36,32 @@ export async function loadUserPosts(handle: string) {
     .eq('userId', profile.userId)
     .order('createdAt', { ascending: false });
 
-  const postsWithMedia: Post[] = posts
-    ? await Promise.all(
-        posts.map(async (post) => {
-          const { data: media } = await supabase
-            .from('Media')
-            .select('*')
-            .eq('postId', post.id)
-            .order('order', { ascending: true });
-          return { ...post, media: media || [] };
-        })
-      )
-    : [];
+  if (!posts || posts.length === 0) {
+    return { profile, posts: [] };
+  }
+
+  // Получаем все media одним запросом
+  const postIds = posts.map((p: Post) => p.id);
+
+  const { data: allMedia } = await supabase
+    .from('Media')
+    .select('*')
+    .in('postId', postIds)
+    .order('order', { ascending: true });
+
+  // Группируем media по postId
+  const mediaByPost = new Map<string, Media[]>();
+  for (const media of allMedia || []) {
+    if (!mediaByPost.has(media.postId)) {
+      mediaByPost.set(media.postId, []);
+    }
+    mediaByPost.get(media.postId)!.push(media);
+  }
+
+  const postsWithMedia: Post[] = posts.map((post: Post) => ({
+    ...post,
+    media: mediaByPost.get(post.id) || [],
+  }));
 
   return { profile, posts: postsWithMedia };
 }
