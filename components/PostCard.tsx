@@ -56,7 +56,7 @@ export default function PostCard({ post, userId }: PostCardProps) {
       const currentUserId = user?.id || '';
       setCurrentUserId(currentUserId);
 
-      // Проверяем только свой лайк — счётчики уже в post
+      // Проверяем свой лайк
       if (currentUserId) {
         const { data: like } = await supabase
           .from('Like')
@@ -65,6 +65,26 @@ export default function PostCard({ post, userId }: PostCardProps) {
           .eq('userId', currentUserId)
           .single();
         setLiked(!!like);
+      }
+
+      // Получаем актуальное количество лайков
+      const { count: actualLikesCount } = await supabase
+        .from('Like')
+        .select('*', { count: 'exact', head: true })
+        .eq('postId', post.id);
+
+      if (actualLikesCount !== null && actualLikesCount !== undefined) {
+        setLikesCount(actualLikesCount);
+      }
+
+      // Получаем актуальное количество комментариев
+      const { count: actualCommentsCount } = await supabase
+        .from('Comment')
+        .select('*', { count: 'exact', head: true })
+        .eq('postId', post.id);
+
+      if (actualCommentsCount !== null && actualCommentsCount !== undefined) {
+        setCommentsCount(actualCommentsCount);
       }
 
       // Загружаем автора
