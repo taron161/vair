@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { UploadProvider } from '@/lib/UploadContext'
 import AvatarCropper from '@/components/AvatarCropper'
+import BioEditor from '@/components/profile/BioEditor'
+import BirthDateEditor from '@/components/profile/BirthDateEditor'
+import GenderSelect from '@/components/profile/GenderSelect'
+import NameEditor from '@/components/profile/NameEditor'
 
 interface UserData {
   id: string
@@ -17,7 +21,6 @@ function ProfileContent() {
   const [showCropper, setShowCropper] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
-  const [bio, setBio] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [showBirthDate, setShowBirthDate] = useState(true)
   const [gender, setGender] = useState('')
@@ -39,7 +42,6 @@ function ProfileContent() {
         setAvatarUrl(profile.avatarUrl || null)
         setDisplayName(profile.displayName || null)
         setNameInput(profile.displayName || '')
-        setBio(profile.bio || '')
         setBioInput(profile.bio || '')
         setOriginalBio(profile.bio || '')
         setBirthDate(profile.birthDate || '')
@@ -179,7 +181,6 @@ function ProfileContent() {
       .update({ bio: bioInput.trim(), updatedAt: new Date().toISOString() })
       .eq('userId', user.id)
 
-    setBio(bioInput.trim())
     setOriginalBio(bioInput.trim())
   }
 
@@ -243,101 +244,33 @@ function ProfileContent() {
             </div>
           </div>
 
-          {/* Имя */}
-          <div className="flex items-center justify-center gap-2 mb-4">
-            {editingName ? (
-              <div className="flex gap-2">
-                <input
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="Имя..."
-                  className="bg-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none"
-                  autoFocus
-                />
-                <button onClick={handleNameSave} className="text-emerald-400 text-sm font-semibold cursor-pointer">
-                  ОК
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className={`text-lg font-semibold ${displayName ? 'text-white' : 'text-white/30'}`}>
-                  {displayName || 'Имя...'}
-                </p>
-                <button
-                  onClick={() => setEditingName(true)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  ✏️
-                </button>
-              </>
-            )}
-          </div>
+          <NameEditor
+            editing={editingName}
+            value={nameInput}
+            displayName={displayName}
+            onChange={setNameInput}
+            onStartEdit={() => setEditingName(true)}
+            onSave={handleNameSave}
+          />
 
-          {/* О себе */}
-          <div className="mb-4">
-            <textarea
-              value={bioInput}
-              onChange={(e) => setBioInput(e.target.value)}
-              placeholder="О себе..."
-              maxLength={200}
-              rows={4}
-              className="w-full bg-white/5 text-white text-sm rounded-xl px-4 py-3 resize-none focus:outline-none focus:bg-white/10 placeholder-white/30"
-            />
-            <div className="flex justify-end mt-2">
-              <button
-                onClick={handleBioSave}
-                disabled={bioInput.trim() === originalBio.trim()}
-                className="px-4 py-1.5 rounded-lg bg-emerald-400 text-black text-sm font-semibold hover:bg-emerald-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Сохранить
-              </button>
-            </div>
-          </div>
+          <BioEditor
+            value={bioInput}
+            originalValue={originalBio}
+            onChange={setBioInput}
+            onSave={handleBioSave}
+          />
 
-          {/* Дата рождения */}
-          <div className="mb-4">
-            <p className="text-white/50 text-xs mb-2">Дата рождения</p>
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(e) => handleBirthDateChange(e.target.value)}
-              className="w-full bg-white/5 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:bg-white/10"
-            />
-            <label className="flex items-center gap-2 mt-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!showBirthDate}
-                onChange={(e) => handleShowBirthDateChange(!e.target.checked)}
-                className="w-4 h-4 accent-emerald-400 cursor-pointer"
-              />
-              <span className="text-white/50 text-xs">Не показывать другим</span>
-            </label>
-          </div>
+          <BirthDateEditor
+            value={birthDate}
+            showToOthers={showBirthDate}
+            onChange={handleBirthDateChange}
+            onToggleShow={handleShowBirthDateChange}
+          />
 
-          {/* Гендер */}
-          <div className="mb-4">
-            <p className="text-white/50 text-xs mb-2">Пол</p>
-            <div className="relative">
-              <select
-                value={gender}
-                onChange={(e) => handleGenderChange(e.target.value)}
-                className="w-full appearance-none bg-white/5 text-white text-sm rounded-xl px-4 py-3 pr-10 focus:outline-none focus:bg-white/10 cursor-pointer border-none outline-none"
-              >
-                <option value="" className="bg-zinc-800 text-white rounded-lg">Не указан</option>
-                <option value="male" className="bg-zinc-800 text-white">Мужской</option>
-                <option value="female" className="bg-zinc-800 text-white">Женский</option>
-              </select>
-              <svg
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none"
-                width="12"
-                height="8"
-                viewBox="0 0 12 8"
-                fill="none"
-              >
-                <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
+          <GenderSelect
+            value={gender}
+            onChange={handleGenderChange}
+          />
         </div>
 
         {/* Настройки и выход */}

@@ -7,6 +7,7 @@ import { UploadProvider } from '@/lib/UploadContext'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
 import PostListClient from '@/components/PostListClient'
+import { sortPostsByScore, PostWithRelations, ScoredPost } from '@/lib/feedAlgorithm'
 
 interface UserData {
   id: string
@@ -19,31 +20,6 @@ interface Media {
   type: string
   order: number
   fullUrl?: string
-}
-
-interface LikeData {
-  id: string
-  postId: string
-  userId: string
-  createdAt: string
-}
-
-interface CommentData {
-  id: string
-  postId: string
-  userId: string
-  text: string
-  createdAt: string
-}
-
-interface PostWithRelations {
-  id: string
-  caption: string | null
-  createdAt: string
-  userId?: string
-  media: Media[]
-  likes: LikeData[]
-  comments: CommentData[]
 }
 
 interface Post {
@@ -100,47 +76,8 @@ function FeedContent() {
         return;
       }
 
-      const now = Date.now();
-      const dayInMs = 24 * 60 * 60 * 1000;
-
-      const postsWithScore = postsData.map((post: PostWithRelations) => {
-        const likes = post.likes || [];
-        const comments = post.comments || [];
-        const media = post.media || [];
-
-        const likesCount = likes.length;
-        const commentsCount = comments.length;
-
-        const lastDayLikes = likes.filter((l: LikeData) => {
-          return now - new Date(l.createdAt).getTime() < dayInMs;
-        }).length;
-
-        const lastDayComments = comments.filter((c: CommentData) => {
-          return now - new Date(c.createdAt).getTime() < dayInMs;
-        }).length;
-
-        const postAge = now - new Date(post.createdAt).getTime();
-        const ageHours = Math.max(1, postAge / (1000 * 60 * 60));
-
-        const score =
-          (lastDayLikes * 10) +
-          (lastDayComments * 20) +
-          (likesCount / ageHours) +
-          (commentsCount / ageHours) +
-          (1000 / ageHours);
-
-        return {
-          id: post.id,
-          caption: post.caption,
-          createdAt: post.createdAt,
-          userId: post.userId,
-          media: media.sort((a, b) => a.order - b.order),
-          score,
-        };
-      });
-
-      postsWithScore.sort((a, b) => (b.score || 0) - (a.score || 0));
-      setPosts(postsWithScore as Post[]);
+      const sortedPosts = sortPostsByScore(postsData as PostWithRelations[]);
+      setPosts(sortedPosts as Post[]);
       setLoading(false);
     };
 
