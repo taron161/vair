@@ -21,6 +21,14 @@ interface Post {
   userId?: string;
 }
 
+interface PostWithRelations {
+  id: string;
+  caption: string | null;
+  createdAt: string;
+  userId?: string;
+  media: Media[];
+}
+
 export async function loadUserPosts(handle: string) {
   const { data: profile } = await supabase
     .from('Profile')
@@ -30,37 +38,23 @@ export async function loadUserPosts(handle: string) {
 
   if (!profile) return null;
 
-  const { data: posts } = await supabase
+  const { data: posts, error } = await supabase
     .from('Post')
-    .select('*')
+    .select(`
+      *,
+      media:Media(*)
+    `)
     .eq('userId', profile.userId)
     .order('createdAt', { ascending: false });
 
-  if (!posts || posts.length === 0) {
+  if (error) {
+    console.error('loadUserPosts error:', error);
     return { profile, posts: [] };
   }
 
-  // Получаем все media одним запросом
-  const postIds = posts.map((p: Post) => p.id);
-
-  const { data: allMedia } = await supabase
-    .from('Media')
-    .select('*')
-    .in('postId', postIds)
-    .order('order', { ascending: true });
-
-  // Группируем media по postId
-  const mediaByPost = new Map<string, Media[]>();
-  for (const media of allMedia || []) {
-    if (!mediaByPost.has(media.postId)) {
-      mediaByPost.set(media.postId, []);
-    }
-    mediaByPost.get(media.postId)!.push(media);
-  }
-
-  const postsWithMedia: Post[] = posts.map((post: Post) => ({
+  const postsWithMedia: Post[] = (posts || []).map((post: PostWithRelations) => ({
     ...post,
-    media: mediaByPost.get(post.id) || [],
+    media: (post.media || []).sort((a, b) => a.order - b.order),
   }));
 
   return { profile, posts: postsWithMedia };

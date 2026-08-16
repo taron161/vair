@@ -21,6 +21,31 @@ interface Media {
   fullUrl?: string
 }
 
+interface LikeData {
+  id: string
+  postId: string
+  userId: string
+  createdAt: string
+}
+
+interface CommentData {
+  id: string
+  postId: string
+  userId: string
+  text: string
+  createdAt: string
+}
+
+interface PostWithRelations {
+  id: string
+  caption: string | null
+  createdAt: string
+  userId?: string
+  media: Media[]
+  likes: LikeData[]
+  comments: CommentData[]
+}
+
 interface Post {
   id: string
   caption: string | null
@@ -78,7 +103,7 @@ function FeedContent() {
       const now = Date.now();
       const dayInMs = 24 * 60 * 60 * 1000;
 
-      const postsWithScore = postsData.map((post: any) => {
+      const postsWithScore = postsData.map((post: PostWithRelations) => {
         const likes = post.likes || [];
         const comments = post.comments || [];
         const media = post.media || [];
@@ -86,11 +111,11 @@ function FeedContent() {
         const likesCount = likes.length;
         const commentsCount = comments.length;
 
-        const lastDayLikes = likes.filter((l: any) => {
+        const lastDayLikes = likes.filter((l: LikeData) => {
           return now - new Date(l.createdAt).getTime() < dayInMs;
         }).length;
 
-        const lastDayComments = comments.filter((c: any) => {
+        const lastDayComments = comments.filter((c: CommentData) => {
           return now - new Date(c.createdAt).getTime() < dayInMs;
         }).length;
 
@@ -109,7 +134,7 @@ function FeedContent() {
           caption: post.caption,
           createdAt: post.createdAt,
           userId: post.userId,
-          media: media.sort((a: any, b: any) => a.order - b.order),
+          media: media.sort((a, b) => a.order - b.order),
           score,
         };
       });
