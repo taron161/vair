@@ -6,6 +6,8 @@ import PostEditor from '@/components/PostEditor';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { useImageCompression } from '@/hooks/useImageCompression';
+import { useVideoValidation } from '@/hooks/useVideoValidation';
+import { useUploadWithProgress } from '@/hooks/useUploadWithProgress';
 
 interface EditData {
   postId: string;
@@ -17,8 +19,9 @@ export default function PostEditorWrapper() {
   const { editorFiles, setEditorFiles, setUploading, uploading } = useUpload();
   const router = useRouter();
   const [editData, setEditData] = useState<EditData | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { compressImage } = useImageCompression();
+  const { validateAllVideos, hasVideo } = useVideoValidation();
+  const { uploadProgress, setUploadProgress, uploadWithProgress } = useUploadWithProgress();
 
   useEffect(() => {
     const handleEdit = (e: Event) => {
@@ -30,41 +33,15 @@ export default function PostEditorWrapper() {
     return () => window.removeEventListener('edit-post', handleEdit);
   }, []);
 
-  const uploadWithProgress = (formData: FormData): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 80);
-          setUploadProgress(percent);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        setUploadProgress(90);
-
-        setTimeout(() => {
-          resolve(xhr.status >= 200 && xhr.status < 300);
-        }, 500);
-      });
-
-      xhr.addEventListener('error', () => {
-        resolve(false);
-      });
-
-      xhr.addEventListener('abort', () => {
-        resolve(false);
-      });
-
-      xhr.open('POST', '/api/upload');
-      xhr.send(formData);
-    });
-  };
-
   const handleCreateSave = async (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => {
     if (!data.media || data.media.length === 0) {
       alert('Нет файлов для загрузки');
+      return;
+    }
+
+    const videoCheck = validateAllVideos(data.media);
+    if (!videoCheck.valid) {
+      alert(videoCheck.error);
       return;
     }
 
@@ -114,12 +91,16 @@ export default function PostEditorWrapper() {
     formData.append('caption', data.caption);
     formData.append('hashtags', data.hashtags);
 
+    const maxAttempts = hasVideo(data.media) ? 1 : 3;
+
     let success = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       setUploadProgress(0);
       success = await uploadWithProgress(formData);
       if (success) break;
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      if (maxAttempts > 1) {
+        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      }
     }
 
     if (success) {

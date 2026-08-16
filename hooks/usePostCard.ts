@@ -43,7 +43,7 @@ export function usePostCard(post: Post) {
           .select('id')
           .eq('postId', post.id)
           .eq('userId', currentUserId)
-          .single();
+          .maybeSingle();
         setLiked(!!like);
       }
 
