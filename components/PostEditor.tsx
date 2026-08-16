@@ -20,6 +20,7 @@ interface PostEditorProps {
   editMode?: boolean;
   editMedia?: { id: string; url: string; type: string; order: number }[];
   uploadProgress?: number;
+  uploadStage?: string;
 }
 
 export default function PostEditor({ 
@@ -31,7 +32,8 @@ export default function PostEditor({
   initialHashtags = '',
   editMode = false,
   editMedia = [],
-  uploadProgress = 0
+  uploadProgress = 0,
+  uploadStage = ''
 }: PostEditorProps) {
   const [media, setMedia] = useState<MediaItem[]>(() => {
     if (editMode && editMedia.length > 0) {
@@ -194,7 +196,7 @@ export default function PostEditor({
           />
         </div>
 
-        {/* Загрузчик с прогрессом */}
+        {/* Загрузчик с прогрессом и этапами */}
         {uploading && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
             <div className="relative w-24 h-20 mb-3">
@@ -237,7 +239,7 @@ export default function PostEditor({
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
-            <p className="text-white/70 text-sm">{uploadProgress}%</p>
+            <p className="text-white/70 text-sm">{uploadStage || `${uploadProgress}%`}</p>
           </div>
         )}
       </div>

@@ -1,51 +1,92 @@
 'use client';
 
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export function useUploadWithProgress() {
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState('');
 
-  const uploadWithProgress = (formData: FormData): Promise<boolean> => {
+  const animateProgress = (targetPercent: number, duration: number = 300) => {
     return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
+      setUploadProgress((prev) => {
+        const startTime = Date.now();
+        const startPercent = prev;
 
-      xhr.timeout = 120000;
+        const updateProgress = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const currentPercent = startPercent + (targetPercent - startPercent) * progress;
 
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 95);
-          setUploadProgress(percent);
-        }
+          setUploadProgress(Math.round(currentPercent));
+
+          if (progress < 1) {
+            requestAnimationFrame(updateProgress);
+          } else {
+            resolve(null);
+          }
+        };
+
+        requestAnimationFrame(updateProgress);
+        return prev;
       });
-
-      xhr.addEventListener('load', () => {
-        setUploadProgress(100);
-
-        setTimeout(() => {
-          resolve(xhr.status >= 200 && xhr.status < 300);
-        }, 1000);
-      });
-
-      xhr.addEventListener('error', () => {
-        resolve(false);
-      });
-
-      xhr.addEventListener('abort', () => {
-        resolve(false);
-      });
-
-      xhr.addEventListener('timeout', () => {
-        resolve(false);
-      });
-
-      xhr.open('POST', '/api/upload');
-      xhr.send(formData);
     });
+  };
+
+  const uploadFile = async (path: string, file: File): Promise<{ success: boolean; error?: string }> => {
+    const { data, error } = await supabase.storage
+      .from('photos')
+      .upload(path, file, {
+        upsert: false,
+        cacheControl: '3600',
+      });
+
+    if (error) {
+      console.error('Upload error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  };
+
+  const uploadWithProgress = async (
+    files: { path: string; file: File }[],
+    onProgress?: (percent: number) => void
+  ): Promise<boolean> => {
+    let allSuccess = true;
+    const fileStep = 90 / files.length;
+
+    for (let i = 0; i < files.length; i++) {
+      const { path, file } = files[i];
+
+      setUploadStage(`Загрузка файла ${i + 1} из ${files.length}...`);
+
+      const result = await uploadFile(path, file);
+
+      if (!result.success) {
+        allSuccess = false;
+        break;
+      }
+
+      const targetPercent = Math.round((i + 1) * fileStep);
+      await animateProgress(targetPercent, 300);
+      if (onProgress) onProgress(targetPercent);
+    }
+
+    if (allSuccess) {
+      await animateProgress(100, 300);
+      setUploadStage('Завершено');
+    }
+
+    return allSuccess;
   };
 
   return {
     uploadProgress,
     setUploadProgress,
+    uploadStage,
+    setUploadStage,
     uploadWithProgress,
+    animateProgress,
   };
 }

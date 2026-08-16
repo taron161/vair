@@ -20,8 +20,8 @@ export default function PostEditorWrapper() {
   const router = useRouter();
   const [editData, setEditData] = useState<EditData | null>(null);
   const { compressImage } = useImageCompression();
-  const { validateAllVideos, hasVideo } = useVideoValidation();
-  const { uploadProgress, setUploadProgress, uploadWithProgress } = useUploadWithProgress();
+  const { validateAllVideos } = useVideoValidation();
+  const { uploadProgress, setUploadProgress, uploadStage, setUploadStage, uploadWithProgress, animateProgress } = useUploadWithProgress();
 
   useEffect(() => {
     const handleEdit = (e: Event) => {
@@ -47,6 +47,8 @@ export default function PostEditorWrapper() {
 
     setUploading(true);
     setUploadProgress(0);
+    setUploadStage('Подготовка...');
+    await animateProgress(10, 400);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -54,75 +56,165 @@ export default function PostEditorWrapper() {
       return;
     }
 
-    const formData = new FormData();
+    const postId = crypto.randomUUID();
     const orderedMedia = [...data.media];
     const cover = orderedMedia.splice(data.coverIndex, 1);
     const reordered = [...cover, ...orderedMedia];
 
-    let hasValidFiles = false;
+    const photos: File[] = [];
+    const videos: File[] = [];
 
-    for (let i = 0; i < reordered.length; i++) {
-      const originalFile = reordered[i];
-
-      if (originalFile.size === 0) continue;
-      
-      hasValidFiles = true;
-
-      if (originalFile.type.startsWith('image/') && !originalFile.type.includes('gif')) {
-        const file600 = await compressImage(originalFile, 600);
-        const file1200 = await compressImage(originalFile, 1200);
-
-        if (file600.size === 0 || file1200.size === 0) continue;
-        
-        formData.append('files600', file600);
-        formData.append('files1200', file1200);
+    for (const file of reordered) {
+      if (file.size === 0) continue;
+      if (file.type.startsWith('video/')) {
+        videos.push(file);
       } else {
-        formData.append('files', originalFile);
+        photos.push(file);
       }
     }
 
-    if (!hasValidFiles) {
+    if (photos.length === 0 && videos.length === 0) {
       setUploading(false);
       alert('Нет файлов для загрузки');
       return;
     }
 
-    formData.append('userId', user.id);
-    formData.append('caption', data.caption);
-    formData.append('hashtags', data.hashtags);
+    const mediaRecords: { url: string; fullUrl?: string; type: string; order: number }[] = [];
 
-    const maxAttempts = hasVideo(data.media) ? 1 : 3;
+    // 1. Загружаем фото через API
+    if (photos.length > 0) {
+      setUploadStage('Сжатие фото...');
+      await animateProgress(25, 400);
 
-    let success = false;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      setUploadProgress(0);
-      success = await uploadWithProgress(formData);
-      if (success) break;
-      if (maxAttempts > 1) {
-        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      const formData = new FormData();
+
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+
+        if (photo.type.startsWith('image/') && !photo.type.includes('gif')) {
+          const file600 = await compressImage(photo, 600);
+          const file1200 = await compressImage(photo, 1200);
+
+          if (file600.size === 0 || file1200.size === 0) continue;
+
+          formData.append('files600', file600);
+          formData.append('files1200', file1200);
+        } else {
+          formData.append('files', photo);
+        }
+      }
+
+      formData.append('userId', user.id);
+      formData.append('caption', data.caption);
+      formData.append('hashtags', data.hashtags);
+      formData.append('skipPostCreation', 'true');
+
+      setUploadStage('Загрузка фото...');
+      await animateProgress(50, 400);
+
+      const res = await fetch('/api/upload-photos', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        setUploading(false);
+        alert('Ошибка загрузки фото');
+        return;
+      }
+
+      const result = await res.json();
+      mediaRecords.push(...result.mediaRecords);
+    }
+
+    // 2. Загружаем видео напрямую в Supabase
+    if (videos.length > 0) {
+      setUploadStage('Загрузка видео...');
+      await animateProgress(70, 400);
+
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        const fileExt = video.name.split('.').pop() || 'mp4';
+        const path = `${user.id}/${postId}/${i}.${fileExt}`;
+
+        const success = await uploadWithProgress([{ path, file: video }]);
+
+        if (!success) {
+          setUploading(false);
+          alert('Ошибка загрузки видео');
+          return;
+        }
+
+        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path);
+
+        mediaRecords.push({
+          url: urlData.publicUrl,
+          type: 'video',
+          order: mediaRecords.length,
+        });
       }
     }
 
-    if (success) {
-      setUploadProgress(100);
+    // 3. Создаём пост
+    setUploadStage('Создание поста...');
+    await animateProgress(90, 400);
 
-      await new Promise((r) => setTimeout(r, 300));
+    const fullCaption = [data.caption, data.hashtags].filter(Boolean).join('\n');
 
+    const { error: postError } = await supabase
+      .from('Post')
+      .insert({
+        id: postId,
+        userId: user.id,
+        caption: fullCaption || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+    if (postError) {
       setUploading(false);
-      setEditorFiles(null);
+      alert('Ошибка создания поста');
+      return;
+    }
 
-      const { data: profile } = await supabase
-        .from('Profile')
-        .select('handle')
-        .eq('userId', user.id)
-        .single();
+    // 4. Создаём Media записи
+    for (const media of mediaRecords) {
+      const { error: mediaError } = await supabase
+        .from('Media')
+        .insert({
+          id: crypto.randomUUID(),
+          postId: postId,
+          url: media.url,
+          fullUrl: media.fullUrl,
+          type: media.type,
+          order: media.order,
+          createdAt: new Date().toISOString(),
+        });
 
-      if (profile) {
-        router.push(`/${profile.handle}`);
+      if (mediaError) {
+        await supabase.from('Post').delete().eq('id', postId);
+        setUploading(false);
+        alert('Ошибка создания медиа');
+        return;
       }
-    } else {
-      setUploading(false);
-      alert('Ошибка загрузки. Попробуйте снова.');
+    }
+
+    setUploadStage('Готово!');
+    await animateProgress(100, 400);
+
+    await new Promise((r) => setTimeout(r, 300));
+
+    setUploading(false);
+    setEditorFiles(null);
+
+    const { data: profile } = await supabase
+      .from('Profile')
+      .select('handle')
+      .eq('userId', user.id)
+      .single();
+
+    if (profile) {
+      router.push(`/${profile.handle}`);
     }
   };
 
@@ -130,7 +222,9 @@ export default function PostEditorWrapper() {
     if (!editData) return;
 
     setUploading(true);
-    setUploadProgress(50);
+    setUploadProgress(0);
+    setUploadStage('Сохранение...');
+    await animateProgress(50, 300);
 
     const fullCaption = [data.caption, data.hashtags].filter(Boolean).join('\n');
 
@@ -139,7 +233,8 @@ export default function PostEditorWrapper() {
       .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
       .eq('id', editData.postId);
 
-    setUploadProgress(100);
+    setUploadStage('Готово!');
+    await animateProgress(100, 300);
 
     await new Promise((r) => setTimeout(r, 300));
 
@@ -164,6 +259,7 @@ export default function PostEditorWrapper() {
         editMode
         editMedia={editData.media}
         uploadProgress={uploadProgress}
+        uploadStage={uploadStage}
       />
     );
   }
@@ -179,6 +275,7 @@ export default function PostEditorWrapper() {
       }}
       uploading={uploading}
       uploadProgress={uploadProgress}
+      uploadStage={uploadStage}
     />
   );
 }
