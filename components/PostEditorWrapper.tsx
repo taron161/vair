@@ -17,6 +17,7 @@ export default function PostEditorWrapper() {
   const { editorFiles, setEditorFiles, setUploading, uploading } = useUpload();
   const router = useRouter();
   const [editData, setEditData] = useState<EditData | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { compressImage } = useImageCompression();
 
   useEffect(() => {
@@ -29,6 +30,38 @@ export default function PostEditorWrapper() {
     return () => window.removeEventListener('edit-post', handleEdit);
   }, []);
 
+  const uploadWithProgress = (formData: FormData): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 80);
+          setUploadProgress(percent);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        setUploadProgress(90);
+
+        setTimeout(() => {
+          resolve(xhr.status >= 200 && xhr.status < 300);
+        }, 500);
+      });
+
+      xhr.addEventListener('error', () => {
+        resolve(false);
+      });
+
+      xhr.addEventListener('abort', () => {
+        resolve(false);
+      });
+
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    });
+  };
+
   const handleCreateSave = async (data: { media: File[]; coverIndex: number; caption: string; hashtags: string }) => {
     if (!data.media || data.media.length === 0) {
       alert('Нет файлов для загрузки');
@@ -36,6 +69,7 @@ export default function PostEditorWrapper() {
     }
 
     setUploading(true);
+    setUploadProgress(0);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -53,9 +87,7 @@ export default function PostEditorWrapper() {
     for (let i = 0; i < reordered.length; i++) {
       const originalFile = reordered[i];
 
-      if (originalFile.size === 0) {
-        continue;
-      }
+      if (originalFile.size === 0) continue;
       
       hasValidFiles = true;
 
@@ -63,9 +95,7 @@ export default function PostEditorWrapper() {
         const file600 = await compressImage(originalFile, 600);
         const file1200 = await compressImage(originalFile, 1200);
 
-        if (file600.size === 0 || file1200.size === 0) {
-          continue;
-        }
+        if (file600.size === 0 || file1200.size === 0) continue;
         
         formData.append('files600', file600);
         formData.append('files1200', file1200);
@@ -84,20 +114,20 @@ export default function PostEditorWrapper() {
     formData.append('caption', data.caption);
     formData.append('hashtags', data.hashtags);
 
-    let res: Response | null = null;
+    let success = false;
     for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        res = await fetch('/api/upload', { method: 'POST', body: formData });
-        if (res.ok) break;
-      } catch (err) {
-        console.error(`Attempt ${attempt + 1} failed:`, err);
-      }
+      setUploadProgress(0);
+      success = await uploadWithProgress(formData);
+      if (success) break;
       await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
     }
 
-    setUploading(false);
+    if (success) {
+      setUploadProgress(100);
 
-    if (res?.ok) {
+      await new Promise((r) => setTimeout(r, 300));
+
+      setUploading(false);
       setEditorFiles(null);
 
       const { data: profile } = await supabase
@@ -110,6 +140,7 @@ export default function PostEditorWrapper() {
         router.push(`/${profile.handle}`);
       }
     } else {
+      setUploading(false);
       alert('Ошибка загрузки. Попробуйте снова.');
     }
   };
@@ -118,6 +149,7 @@ export default function PostEditorWrapper() {
     if (!editData) return;
 
     setUploading(true);
+    setUploadProgress(50);
 
     const fullCaption = [data.caption, data.hashtags].filter(Boolean).join('\n');
 
@@ -126,7 +158,9 @@ export default function PostEditorWrapper() {
       .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
       .eq('id', editData.postId);
 
-    await new Promise((r) => setTimeout(r, 500));
+    setUploadProgress(100);
+
+    await new Promise((r) => setTimeout(r, 300));
 
     setUploading(false);
     setEditData(null);
@@ -148,6 +182,7 @@ export default function PostEditorWrapper() {
         initialHashtags={tags}
         editMode
         editMedia={editData.media}
+        uploadProgress={uploadProgress}
       />
     );
   }
@@ -162,6 +197,7 @@ export default function PostEditorWrapper() {
         if (!uploading) setEditorFiles(null);
       }}
       uploading={uploading}
+      uploadProgress={uploadProgress}
     />
   );
 }

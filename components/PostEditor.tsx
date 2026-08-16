@@ -19,6 +19,7 @@ interface PostEditorProps {
   initialHashtags?: string;
   editMode?: boolean;
   editMedia?: { id: string; url: string; type: string; order: number }[];
+  uploadProgress?: number;
 }
 
 export default function PostEditor({ 
@@ -29,7 +30,8 @@ export default function PostEditor({
   initialCaption = '', 
   initialHashtags = '',
   editMode = false,
-  editMedia = []
+  editMedia = [],
+  uploadProgress = 0
 }: PostEditorProps) {
   const [media, setMedia] = useState<MediaItem[]>(() => {
     if (editMode && editMedia.length > 0) {
@@ -53,7 +55,6 @@ export default function PostEditor({
   const handleSave = () => {
     if (uploading) return;
 
-    // Форматируем теги
     const tagsFromField = hashtags
       .split(/[\s,;]+/)
       .map(tag => tag.trim())
@@ -93,7 +94,7 @@ export default function PostEditor({
           </button>
           <h2 className="text-white font-semibold">{editMode ? 'Редактировать пост' : 'Новый пост'}</h2>
           <button onClick={handleSave} disabled={uploading} className="text-emerald-400 text-sm font-semibold hover:text-emerald-300 disabled:opacity-50 cursor-pointer">
-            {uploading ? 'Сохранение...' : 'Сохранить'}
+            {uploading ? 'Загрузка...' : 'Сохранить'}
           </button>
         </div>
 
@@ -193,7 +194,7 @@ export default function PostEditor({
           />
         </div>
 
-        {/* Загрузчик */}
+        {/* Загрузчик с прогрессом */}
         {uploading && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
             <div className="relative w-24 h-20 mb-3">
@@ -228,7 +229,15 @@ export default function PostEditor({
                 <span className="text-[#34d399] text-xs font-bold tracking-[3px]">VAIR</span>
               </div>
             </div>
-            <p className="text-white/70 text-sm mt-2">Сохраняем...</p>
+
+            {/* Прогресс-бар */}
+            <div className="w-48 h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+              <div
+                className="h-full bg-emerald-400 transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-white/70 text-sm">{uploadProgress}%</p>
           </div>
         )}
       </div>

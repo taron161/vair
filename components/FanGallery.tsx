@@ -165,6 +165,7 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
                 />
               ) : (
                 <img
+                  key={expandedPhoto.id}
                   src={expandedPhoto.url}
                   alt=""
                   className="w-full rounded-xl"
@@ -176,7 +177,9 @@ export default function FanGallery({ photos, isInView = false }: FanGalleryProps
                       const img = new Image();
                       img.src = fullUrl;
                       img.onload = () => {
-                        target.src = fullUrl;
+                        if (target.src !== fullUrl) {
+                          target.src = fullUrl;
+                        }
                       };
                     }
                   }}
