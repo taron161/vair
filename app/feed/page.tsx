@@ -7,7 +7,6 @@ import { UploadProvider } from '@/lib/UploadContext'
 import AppFooter from '@/components/AppFooter'
 import PostEditorWrapper from '@/components/PostEditorWrapper'
 import PostListClient from '@/components/PostListClient'
-import { sortPostsByScore, PostWithRelations, ScoredPost } from '@/lib/feedAlgorithm'
 
 interface UserData {
   id: string
@@ -39,59 +38,30 @@ function FeedContent() {
 
   useEffect(() => {
     const loadFeed = async (userId: string) => {
-      const { data: follows } = await supabase
-        .from('Follow')
-        .select('followingId')
-        .eq('followerId', userId);
+      const res = await fetch('/api/get-feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
 
-      const followingIds = follows?.map((f: { followingId: string }) => f.followingId) || [];
-
-      if (followingIds.length === 0) {
-        setPosts([]);
-        setLoading(false);
-        return;
+      if (res.ok) {
+        const data = await res.json()
+        setPosts(data.posts)
       }
-
-      const { data: postsData, error: feedError } = await supabase
-        .from('Post')
-        .select(`
-          *,
-          media:Media(*),
-          likes:Like(*),
-          comments:Comment(*)
-        `)
-        .in('userId', followingIds)
-        .order('createdAt', { ascending: false });
-
-      if (feedError) {
-        console.error('Feed error:', feedError);
-        setPosts([]);
-        setLoading(false);
-        return;
-      }
-
-      if (!postsData || postsData.length === 0) {
-        setPosts([]);
-        setLoading(false);
-        return;
-      }
-
-      const sortedPosts = sortPostsByScore(postsData as PostWithRelations[]);
-      setPosts(sortedPosts as Post[]);
-      setLoading(false);
-    };
+      setLoading(false)
+    }
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
-        router.push('/login');
+        router.push('/login')
       } else {
-        setUser(user);
-        loadFeed(user.id);
+        setUser(user)
+        loadFeed(user.id)
       }
-    });
-  }, [router]);
+    })
+  }, [router])
 
-  if (loading) return null;
+  if (loading) return null
 
   return (
     <>
@@ -110,7 +80,7 @@ function FeedContent() {
       <AppFooter />
       <PostEditorWrapper />
     </>
-  );
+  )
 }
 
 export default function FeedPage() {
@@ -118,5 +88,5 @@ export default function FeedPage() {
     <UploadProvider>
       <FeedContent />
     </UploadProvider>
-  );
+  )
 }

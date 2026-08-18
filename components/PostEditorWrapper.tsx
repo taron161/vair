@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useUpload } from '@/lib/UploadContext';
 import PostEditor from '@/components/PostEditor';
+import { uploadToBlob } from '@/lib/blob';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { useImageCompression } from '@/hooks/useImageCompression';
@@ -21,7 +22,7 @@ export default function PostEditorWrapper() {
   const [editData, setEditData] = useState<EditData | null>(null);
   const { compressImage } = useImageCompression();
   const { validateAllVideos } = useVideoValidation();
-  const { uploadProgress, setUploadProgress, uploadStage, setUploadStage, uploadWithProgress, animateProgress } = useUploadWithProgress();
+  const { uploadProgress, setUploadProgress, uploadStage, setUploadStage, animateProgress } = useUploadWithProgress();
 
   useEffect(() => {
     const handleEdit = (e: Event) => {
@@ -81,7 +82,7 @@ export default function PostEditorWrapper() {
 
     const mediaRecords: { url: string; fullUrl?: string; type: string; order: number }[] = [];
 
-    // 1. Загружаем фото через API
+    // 1. Загружаем фото
     if (photos.length > 0) {
       setUploadStage('Сжатие фото...');
       await animateProgress(25, 400);
@@ -105,9 +106,6 @@ export default function PostEditorWrapper() {
       }
 
       formData.append('userId', user.id);
-      formData.append('caption', data.caption);
-      formData.append('hashtags', data.hashtags);
-      formData.append('skipPostCreation', 'true');
 
       setUploadStage('Загрузка фото...');
       await animateProgress(50, 400);
@@ -127,7 +125,7 @@ export default function PostEditorWrapper() {
       mediaRecords.push(...result.mediaRecords);
     }
 
-    // 2. Загружаем видео напрямую в Supabase
+    // 2. Загружаем видео
     if (videos.length > 0) {
       setUploadStage('Загрузка видео...');
       await animateProgress(70, 400);
@@ -137,66 +135,42 @@ export default function PostEditorWrapper() {
         const fileExt = video.name.split('.').pop() || 'mp4';
         const path = `${user.id}/${postId}/${i}.${fileExt}`;
 
-        const success = await uploadWithProgress([{ path, file: video }]);
-
-        if (!success) {
+        try {
+          const url = await uploadToBlob(path, video);
+          mediaRecords.push({
+            url,
+            type: 'video',
+            order: mediaRecords.length,
+          });
+        } catch (err) {
           setUploading(false);
           alert('Ошибка загрузки видео');
           return;
         }
-
-        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path);
-
-        mediaRecords.push({
-          url: urlData.publicUrl,
-          type: 'video',
-          order: mediaRecords.length,
-        });
       }
     }
 
-    // 3. Создаём пост
+    // 3. Создаём пост через API
     setUploadStage('Создание поста...');
     await animateProgress(90, 400);
 
     const fullCaption = [data.caption, data.hashtags].filter(Boolean).join('\n');
 
-    const { error: postError } = await supabase
-      .from('Post')
-      .insert({
-        id: postId,
+    const res = await fetch('/api/create-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        postId,
         userId: user.id,
-        caption: fullCaption || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+        caption: fullCaption,
+        mediaRecords,
+      }),
+    });
 
-    if (postError) {
+    if (!res.ok) {
       setUploading(false);
       alert('Ошибка создания поста');
       return;
-    }
-
-    // 4. Создаём Media записи
-    for (const media of mediaRecords) {
-      const { error: mediaError } = await supabase
-        .from('Media')
-        .insert({
-          id: crypto.randomUUID(),
-          postId: postId,
-          url: media.url,
-          fullUrl: media.fullUrl,
-          type: media.type,
-          order: media.order,
-          createdAt: new Date().toISOString(),
-        });
-
-      if (mediaError) {
-        await supabase.from('Post').delete().eq('id', postId);
-        setUploading(false);
-        alert('Ошибка создания медиа');
-        return;
-      }
     }
 
     setUploadStage('Готово!');
@@ -207,14 +181,13 @@ export default function PostEditorWrapper() {
     setUploading(false);
     setEditorFiles(null);
 
-    const { data: profile } = await supabase
-      .from('Profile')
-      .select('handle')
-      .eq('userId', user.id)
-      .single();
-
-    if (profile) {
-      router.push(`/${profile.handle}`);
+    // Получаем handle через API
+    const profileRes = await fetch(`/api/get-handle?userId=${user.id}`);
+    if (profileRes.ok) {
+      const profileData = await profileRes.json();
+      if (profileData.handle) {
+        router.push(`/${profileData.handle}`);
+      }
     }
   };
 
@@ -228,10 +201,20 @@ export default function PostEditorWrapper() {
 
     const fullCaption = [data.caption, data.hashtags].filter(Boolean).join('\n');
 
-    await supabase
-      .from('Post')
-      .update({ caption: fullCaption || null, updatedAt: new Date().toISOString() })
-      .eq('id', editData.postId);
+    const res = await fetch('/api/update-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        postId: editData.postId,
+        caption: fullCaption,
+      }),
+    });
+
+    if (!res.ok) {
+      setUploading(false);
+      alert('Ошибка сохранения');
+      return;
+    }
 
     setUploadStage('Готово!');
     await animateProgress(100, 300);

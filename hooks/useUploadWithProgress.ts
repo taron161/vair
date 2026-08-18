@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { uploadToBlob } from '@/lib/blob';
 
 export function useUploadWithProgress() {
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -33,22 +33,6 @@ export function useUploadWithProgress() {
     });
   };
 
-  const uploadFile = async (path: string, file: File): Promise<{ success: boolean; error?: string }> => {
-    const { data, error } = await supabase.storage
-      .from('photos')
-      .upload(path, file, {
-        upsert: false,
-        cacheControl: '3600',
-      });
-
-    if (error) {
-      console.error('Upload error:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
-  };
-
   const uploadWithProgress = async (
     files: { path: string; file: File }[],
     onProgress?: (percent: number) => void
@@ -61,9 +45,10 @@ export function useUploadWithProgress() {
 
       setUploadStage(`Загрузка файла ${i + 1} из ${files.length}...`);
 
-      const result = await uploadFile(path, file);
-
-      if (!result.success) {
+      try {
+        await uploadToBlob(path, file);
+      } catch (err) {
+        console.error('Upload error:', err);
         allSuccess = false;
         break;
       }
