@@ -5,24 +5,56 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String    @id
+  email     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  profile   Profile?
+  posts     Post[]
+  likes     Like[]
+  comments  Comment[]
+  followers Follow[]  @relation("follower")
+  following Follow[]  @relation("following")
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  handle         String   @unique
+  displayName    String?
+  bio            String?
+  avatarUrl      String?
+  avatarUrlSmall String?
+  birthDate      String?
+  showBirthDate  Boolean  @default(true)
+  gender         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model Post {
-  id        String    @id @default(cuid())
-  userId    String
-  caption   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  media     Media[]
-  likes     Like[]
-  comments  Comment[]
+  id            String    @id @default(cuid())
+  userId        String
+  caption       String?
+  likesCount    Int       @default(0)
+  commentsCount Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id])
+  media         Media[]
+  likes         Like[]
+  comments      Comment[]
 }
 
 model Media {
   id        String   @id @default(cuid())
   postId    String
   url       String
+  fullUrl   String?
   type      String   @default("photo")
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -35,6 +67,7 @@ model Like {
   userId    String
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([postId, userId])
 }
@@ -46,4 +79,25 @@ model Comment {
   text      String
   createdAt DateTime @default(now())
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("follower", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  text       String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
